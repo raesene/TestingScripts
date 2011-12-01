@@ -1,5 +1,4 @@
 #!/usr/bin/env ruby
-#TODO: Add rdoc
 #TODO: split out network numbers on the report (inf/adhoc/probe)
 
 
@@ -121,7 +120,7 @@ class KisAnalysis
     end
 
     if @options.input_file_name && @options.input_dir_name
-      puts "can't specify files and directorys"
+      puts "can't specify files and directories"
       puts "one or the other..."
       exit
     end
@@ -216,9 +215,14 @@ class KisAnalysis
     end
 
     unless @options.report_file
-      @options.report_file = 'Kismet-Wireless-Report-' + Time.now.to_s + '.html'
+      html_report_file_name = 'Kismet-Wireless-Report-' + Time.now.to_s + '.html'
     end
-    @report = File.new(@options.report_file,'w+')
+
+    unless @options.report_file =~ /html$/
+      html_report_file_name = @options.report_file + '.html'
+    end
+
+    @report = File.new(html_report_file_name,'w+')
     html_report_header
     html_report_stats
     

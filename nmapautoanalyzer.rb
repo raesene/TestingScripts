@@ -37,11 +37,10 @@
 
 
 class NmapautoAnalyzer
-  # The Version of the Code
-  VERSION = '0.2.3'
+
+  VERSION = '0.2.4'
   attr_accessor :valid_entries, :scan_files, :parsed_hosts, :scanned_files, :options
 
-  # parses the supplied arguments and sets up the options for running.
   def initialize(arguments)
     
     require 'rubygems'
@@ -57,7 +56,7 @@ class NmapautoAnalyzer
     script_dir = File.expand_path( File.dirname(__FILE__) )
 
     begin
-      puts script_dir + '/parser.rb'
+
       if File.exists?(script_dir + '/parser.rb')
         require script_dir + '/parser'
       else
@@ -81,25 +80,14 @@ class NmapautoAnalyzer
     opts = OptionParser.new do |opts|
       opts.banner = "Nmap Auto Analyzer #{VERSION}"
       
-      opts.on("-mMODE","--mode MODE","Mode to Run in") do |mode|
-        case mode 
-        when 'directory'
-          @options.scan_type = :directory
-        when 'file'
-          @options.scan_type = :file
-        else
-          puts 'scan mode must be specified to either directory or file'
-          puts opts
-          exit
-        end
-      end
-
       opts.on("-d", "--directory [DIRECTORY]", "Directory to scan for xml files") do |dir|
         @options.scan_directory = dir
+        @options.scan_type = :directory
       end
 
       opts.on("-f", "--file [FILE]", "File to scan including path") do |file|
         @options.scan_file = file
+        @options.scan_type = :file
       end
       
       opts.on("-r", "--report [REPORT]", "Report name") do |rep|
@@ -277,7 +265,9 @@ class NmapautoAnalyzer
 	@report_file.puts ipaddresses.uniq.join(',')
     @report_file.puts ""
     @report_file.puts ""
-    sorted_hosts = @parsed_hosts.sort {|a,b| b[1].length <=> a[1].length}
+    #sorted_hosts = @parsed_hosts.sort {|a,b| b[1].length <=> a[1].length}
+    sorted_hosts = @parsed_hosts.sort_by {|address,find| address.split('.').map{ |digits| digits.to_i}}
+
     sorted_hosts.each do |entry|
       host, ports = entry[0], entry[1]
       #This omits any hosts that were deemed up but had no open ports
@@ -341,7 +331,7 @@ class NmapautoAnalyzer
   end
   
   
-  #protected
+
 
 end
 
