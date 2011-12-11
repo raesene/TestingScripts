@@ -26,7 +26,6 @@
   # == Options
   #   -h, --help          	Displays help message
   #   -v, --version       	Display the version, then exit
-  #   -m, --mode       		One of two modes to run the script in 'directory','file'
   #   -d <dir>, --directory <dir>  Only needed in directory mode name of the directory to scan
   #   -f <file>, --file <file>     Only needed in file mode, name of the file to parse
   #   -r <file>, --report <file>        Name of file for reporting
@@ -82,25 +81,14 @@ class NessusautoAnalyzer
     opts = OptionParser.new do |opts|
       opts.banner = "Nessus Auto analyzer #{VERSION}"
       
-      opts.on("-mMODE","--mode MODE", "Mode to run the analyzer in") do |mode|
-        case mode.downcase
-        when 'directory' || 'dir'
-          @options.scan_type = :directory
-        when 'file'
-          @options.scan_type = :file
-        else
-          puts 'Scan mode must be specified either directory or file'
-          puts opts
-          exit
-        end
-      end
-      
       opts.on("-d", "--directory [DIRECTORY]", "Directory to scan for .nessus files") do |dir|
         @options.scan_directory = dir
+        @options.scan_type = :directory
       end 
       
       opts.on("-f", "--file [FILE]", "File to analyze including path") do |file|
         @options.scan_file = file
+        @options.scan_type = :file
       end
       
       opts.on("-r", "--report [REPORT]", "Base Report Name") do |rep|
