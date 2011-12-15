@@ -68,6 +68,12 @@ class KisAnalysis
     #This option specifies whether we'll try looking up the network co-ordinates using Google Maps
     @options.google_maps_lookup = false
 
+    #This option is a hack for ath9k drivers which seem to pick up corrupt data from time to time in kismet.  the key is that the corrupt networks only
+    #have one packet, so if we just eliminate all networks with one packet we lose the corruption
+    #downside is some data loss, but hey if we only got one packet we prob. didn't get too close to that source anyway :)
+    @options.ath9k_hack = false
+
+
     opts = OptionParser.new do |opts|
       opts.banner = "Ruby Kismet Log File Analyzer"
 
@@ -97,6 +103,10 @@ class KisAnalysis
 
       opts.on("-m","--map","Create a Google map") do |map|
         @options.create_map = true
+      end
+
+      opts.on("-a", "--ath9k", "Enable ath9k hack") do |ath9k|
+        @options.ath9k_hack = true
       end
 
       opts.on("-h","--help","-?","--?", "Get Help") do |help|
@@ -457,6 +467,13 @@ class KisAnalysis
 
   
   def analyse_net(net,type)
+
+    puts "network traffic for " + net.xpath('packets/total').children[0].text
+    if @options.ath9k_hack
+      return if net.xpath('packets/total').children[0].text.to_i < 2
+    end
+
+
 	  manufacturer = net.search('manuf')[0].text
     begin
       encryption_cipher = net.search('encryption')[0].text
@@ -476,7 +493,21 @@ class KisAnalysis
       when "inf", "adhoc"
         begin
           bssid = net.search('BSSID')[0].text
-		      essid = net.search('essid')[0].text
+          essid = ''
+          pack_count = 0
+          net.xpath('SSID').each do |test_ssid|
+
+            if essid == ''
+              essid = test_ssid.xpath('essid').text
+              pack_count = test_ssid.xpath('packets').text.to_i
+            else
+              if test_ssid.xpath('packets').text.to_i > pack_count
+                essid = test_ssid.xpath('essid').text
+                pack_count = test_ssid.xpath('packets').text.to_i
+              end
+            end
+
+          end
           channel = net.search('channel')[0].text
 			    #TODO: Complete Hack make this nicer we need to find the essid where there are multiple instances of it sometimes it's reporting blank.
 			    if essid.length <2 && net.search('essid').length > 1
@@ -567,14 +598,14 @@ class KisAnalysis
     @doc.search('wireless-network').each do |net|
       if @options.gps
 	      next if net.attribute('type').value == 'probe'
-        next unless net.search('avg-lat').length > 0 && net.search('avg-lon').length > 0
+        next unless net.search('peak-lat').length > 0 && net.search('peak-lon').length > 0
         bssid = net.search('BSSID').text
         @options.gps_data[bssid] = Hash.new
 
-        @options.gps_data[bssid]['lat'] = net.search('avg-lat')[0].text.to_f
-        @log.debug("just wrote a value of " + net.search('avg-lat')[0].text + " for " + bssid)
-        @options.gps_data[bssid]['lon'] = net.search('avg-lon')[0].text.to_f
-        @log.debug("just wrote a value of " + net.search('avg-lon')[0].text + "for " + bssid )
+        @options.gps_data[bssid]['lat'] = net.search('peak-lat')[0].text.to_f
+        @log.debug("just wrote a value of " + net.search('peak-lat')[0].text + " for " + bssid)
+        @options.gps_data[bssid]['lon'] = net.search('peak-lon')[0].text.to_f
+        @log.debug("just wrote a value of " + net.search('peak-lon')[0].text + "for " + bssid )
       elsif @options.google_maps_lookup
         next if net.attribute('type').value == 'probe'
         require 'json'
