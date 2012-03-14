@@ -29,9 +29,9 @@
   # == Usage 
   #
   #   Directory Mode
-  #   nmapautoanalyzer.rb -m directory -d <directoryname> -r <reportfile>
+  #   nmapautoanalyzer.rb -d <directoryname> -r <reportfile>
   #   File Mode
-  #   nmapautoanalyzer.rb -m file -f <filename> -r <reportfile>
+  #   nmapautoanalyzer.rb -f <filename> -r <reportfile>
 
 
 
