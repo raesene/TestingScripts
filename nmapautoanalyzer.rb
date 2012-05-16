@@ -250,7 +250,7 @@ class NmapautoAnalyzer
     @report_file.puts "===================\n\n"
     @report_file.puts "Unique ports open"
     @report_file.puts "-------------------\n\n"
-    @report_file.puts @ports.join(',')
+    @report_file.puts @ports.join(', ')
     @report_file.puts "\n\n"
     @report_file.puts "NMAP Host Analysis"
     @report_file.puts "-------------------"
@@ -262,7 +262,7 @@ class NmapautoAnalyzer
     @parsed_hosts.each_key do |host|
       ipaddresses << host
     end
-	@report_file.puts ipaddresses.uniq.join(',')
+	@report_file.puts ipaddresses.uniq.join(', ')
     @report_file.puts ""
     @report_file.puts ""
     #sorted_hosts = @parsed_hosts.sort {|a,b| b[1].length <=> a[1].length}
@@ -297,7 +297,7 @@ class NmapautoAnalyzer
     @port_hash.each do |port,hosts|
       @report_file.puts port
       @report_file.puts "-----------------"
-      @report_file.puts hosts.uniq.join(',')
+      @report_file.puts hosts.uniq.join(', ')
       @report_file.puts "\n\n"
     end
 

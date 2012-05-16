@@ -172,7 +172,7 @@ class NessusautoAnalyzer
 
   #Set-up the Hashes to store the results of the parse commands and pass to the correct parse command depending on version
   def parse_files
-    @log.debug("Files to be looked at : #{@scan_files.join(',')}")
+    @log.debug("Files to be looked at : #{@scan_files.join(', ')}")
     #Hash for holding results on a per-host basis
     @parsed_hosts = Hash.new
     @critical_vulns = Hash.new
@@ -233,7 +233,7 @@ class NessusautoAnalyzer
         #Create an array and shove the cve texts in there as it makes it easy to concat them afterwards
         cve_array = Array.new
         item.xpath('cve').each {|cve| cve_array << cve.text}
-        issue['cve'] = cve_array.join(',')
+        issue['cve'] = cve_array.join(', ')
 
 		    issue['severity'] = item['severity']
 
@@ -346,7 +346,7 @@ class NessusautoAnalyzer
       @high_report_file.puts results['issue']['title']
       @high_report_file.puts "CVE : " + results['issue']['cve']
       @high_report_file.puts "Exploitability : " + results['issue']['exploitable']
-      @high_report_file.puts "Affected Hosts : " + results['affected_hosts'].uniq.join(',')
+      @high_report_file.puts "Affected Hosts : " + results['affected_hosts'].uniq.join(', ')
       @high_report_file.puts "\n------------------\n"
     end
     @critical_report_file.puts "Critical Risk Issues"
@@ -355,7 +355,7 @@ class NessusautoAnalyzer
       @critical_report_file.puts results['issue']['title']
       @critical_report_file.puts "CVE : " + results['issue']['cve']
       @critical_report_file.puts "Exploitability : " + results['issue']['exploitable']
-      @critical_report_file.puts "Affected Hosts : " + results['affected_hosts'].uniq.join(',')
+      @critical_report_file.puts "Affected Hosts : " + results['affected_hosts'].uniq.join(', ')
       @critical_report_file.puts "\n------------------\n"
     end
     @medium_report_file.puts "Medium Risk Issues"
@@ -364,7 +364,7 @@ class NessusautoAnalyzer
       @medium_report_file.puts results['issue']['title']
       @medium_report_file.puts "CVE : " + results['issue']['cve']
       @medium_report_file.puts "Exploitability : " + results['issue']['exploitable']
-      @medium_report_file.puts "Affected Hosts : " + results['affected_hosts'].uniq.join(',')
+      @medium_report_file.puts "Affected Hosts : " + results['affected_hosts'].uniq.join(', ')
       @medium_report_file.puts "\n------------------\n"
     end
     @low_report_file.puts "Low Risk Issues"
@@ -373,7 +373,7 @@ class NessusautoAnalyzer
       @low_report_file.puts results['issue']['title']
       @low_report_file.puts "CVE : " + results['issue']['cve']
       @low_report_file.puts "Exploitability : " + results['issue']['exploitable']
-      @low_report_file.puts "Affected Hosts : " + results['affected_hosts'].uniq.join(',')
+      @low_report_file.puts "Affected Hosts : " + results['affected_hosts'].uniq.join(', ')
       @low_report_file.puts "\n------------------\n"
     end
     
