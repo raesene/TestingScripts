@@ -175,11 +175,13 @@ class NessusautoAnalyzer
     @log.debug("Files to be looked at : #{@scan_files.join(',')}")
     #Hash for holding results on a per-host basis
     @parsed_hosts = Hash.new
+    @critical_vulns = Hash.new
     @high_vulns = Hash.new
     @medium_vulns = Hash.new
     @low_vulns = Hash.new
     @info_vulns = Hash.new
     @exploitable_vulns = Hash.new
+    @web_server_list = Array.new
     #Array for list of files reviewed (Do I need this?)
     @scanned_files = Array.new
     @scan_files.each do |file|      
@@ -243,6 +245,13 @@ class NessusautoAnalyzer
           #Below is a quick use of Ternery to check the existence of a hash and then if is exists adds the item and if it doesn't creates it and adds the item
           @exploitable_vulns[ip_address] ? @exploitable_vulns[ip_address][item_id] = issue : (@exploitable_vulns[ip_address] = Hash.new; @exploitable_vulns[ip_address][item_id] = issue)
         end
+        if item['svc_name'] == 'www'
+          if item.xpath('plugin_output').text =~ /TLSv1|SSLv3/
+            @web_server_list << 'https://' + ip_address + ':' + item['port']
+          else
+            @web_server_list << 'http://' + ip_address + ':' + item['port']
+          end
+        end
         
         case item['severity']
         #Note items
@@ -285,6 +294,15 @@ class NessusautoAnalyzer
             @high_vulns[item_id]['affected_hosts'] = Array.new
             @high_vulns[item_id]['affected_hosts'] << ip_address
           end
+        when '4'
+          if @critical_vulns[item_id] 
+            @critical_vulns[item_id]['affected_hosts'] << ip_address 
+          else
+            @critical_vulns[item_id] = Hash.new
+            @critical_vulns[item_id]['issue'] = issue
+            @critical_vulns[item_id]['affected_hosts'] = Array.new
+            @critical_vulns[item_id]['affected_hosts'] << ip_address
+          end
           
         end
       end
@@ -300,10 +318,12 @@ class NessusautoAnalyzer
   #Create text reports
   def report
     @exploitable_report_file = File.new(@base_dir + '/' + @options.report_file + '_nessus_exploitable.txt','w+')
+    @critical_report_file = File.new(@base_dir + '/' + @options.report_file + '_nessus_critical_risk.txt','w+')
     @high_report_file = File.new(@base_dir + '/' + @options.report_file + '_nessus_high_risk.txt','w+')
     @medium_report_file = File.new(@base_dir + '/' + @options.report_file + '_nessus_medium_risk.txt','w+')
     @low_report_file = File.new(@base_dir + '/' + @options.report_file + '_nessus_low_risk.txt','w+')
-	  @host_report_file = File.new(@base_dir + '/' + @options.report_file + '_nessus_hosts.txt','w+')
+    @host_report_file = File.new(@base_dir + '/' + @options.report_file + '_nessus_hosts.txt','w+')
+    @web_server_report_file = File.new(@base_dir + '/' + @options.report_file + '_web_servers.txt','w+')
 
     @exploitable_vulns.each do |address,exploit|
       @exploitable_report_file.puts "exploitable issues for #{address}"
@@ -329,6 +349,15 @@ class NessusautoAnalyzer
       @high_report_file.puts "Affected Hosts : " + results['affected_hosts'].uniq.join(',')
       @high_report_file.puts "\n------------------\n"
     end
+    @critical_report_file.puts "Critical Risk Issues"
+    @critical_report_file.puts "=================\n"
+    @critical_vulns.each do |item, results|
+      @critical_report_file.puts results['issue']['title']
+      @critical_report_file.puts "CVE : " + results['issue']['cve']
+      @critical_report_file.puts "Exploitability : " + results['issue']['exploitable']
+      @critical_report_file.puts "Affected Hosts : " + results['affected_hosts'].uniq.join(',')
+      @critical_report_file.puts "\n------------------\n"
+    end
     @medium_report_file.puts "Medium Risk Issues"
     @medium_report_file.puts "=================\n"
     @medium_vulns.each do |item, results|
@@ -348,24 +377,26 @@ class NessusautoAnalyzer
       @low_report_file.puts "\n------------------\n"
     end
     
-	@host_report_file.puts "Issues by Host"
-	@host_report_file.puts "===============\n"
-	@parsed_hosts.each do |ip_address, results|
-	  @host_report_file.puts "Results for #{ip_address}"
-	  @host_report_file.puts "=======================\n"
-	  results.each do |item,issue|
-	  @host_report_file.puts issue['title']
-		@host_report_file.puts "CVE : " + issue['cve'] if issue['cve'].length > 0
-		@host_report_file.puts "Severity : " + issue['severity']
-		@host_report_file.puts "Description : " + issue['description']
-    @host_report_file.puts ""
-    @host_report_file.puts "Plugin Output: " + issue['plugin_output'] if issue['plugin_output'].length > 0
-    @host_report_file.puts "\n-------------------\n"
-	  end
-	end
-	
+    @web_server_list.uniq.each do |host|
+      @web_server_report_file.puts host
+    end
+
+    @host_report_file.puts "Issues by Host"
+    @host_report_file.puts "===============\n"
+    @parsed_hosts.each do |ip_address, results|
+      @host_report_file.puts "Results for #{ip_address}"
+      @host_report_file.puts "=======================\n"
+      results.each do |item,issue|
+        @host_report_file.puts issue['title']
+	@host_report_file.puts "CVE : " + issue['cve'] if issue['cve'].length > 0
+	@host_report_file.puts "Severity : " + issue['severity']
+	@host_report_file.puts "Description : " + issue['description']
+        @host_report_file.puts ""
+        @host_report_file.puts "Plugin Output: " + issue['plugin_output'] if issue['plugin_output'].length > 0
+        @host_report_file.puts "\n-------------------\n"
+      end
+    end	
   end
-  
 end
 
 if __FILE__ == $0
