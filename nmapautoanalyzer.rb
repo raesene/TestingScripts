@@ -295,7 +295,7 @@ class NmapautoAnalyzer
     @report_file.puts "\n\nReport of hosts with a given port open"
     @report_file.puts "--------------------\n\n"
     @port_hash.each do |port,hosts|
-      @report_file.puts port
+      @report_file.puts port + ' - ' + hosts.length.to_s + ' hosts have this port open'
       @report_file.puts "-----------------"
       @report_file.puts hosts.uniq.join(', ')
       @report_file.puts "\n\n"
