@@ -210,6 +210,7 @@ class NessusautoAnalyzer
     hosts.each do |host|
       ip_address = host['name']
       operating_system = host.search('tag[@name="operating-system"]').text
+      fqdn = host.search('tag[@name="host-fqdn"]').text
       #Setup a hash to store the issues by host
       @parsed_hosts[ip_address] = Hash.new
 
@@ -257,51 +258,68 @@ class NessusautoAnalyzer
         #Note items
         when '0'
           if @info_vulns[item_id] 
-            @info_vulns[item_id]['affected_hosts'] << ip_address 
+            @info_vulns[item_id]['affected_hosts'] << ip_address
+            @info_vulns[item_id]['affected_fqdns'] << fqdn 
           else
             @info_vulns[item_id] = Hash.new
             @info_vulns[item_id]['issue'] = issue
             @info_vulns[item_id]['affected_hosts'] = Array.new
             @info_vulns[item_id]['affected_hosts'] << ip_address
+            @info_vulns[item_id]['affected_fqdns'] = Array.new
+            @info_vulns[item_id]['affected_fqdns'] << fqdn
+
           end
         #Low Items
         when '1'
           if @low_vulns[item_id] 
             @low_vulns[item_id]['affected_hosts'] << ip_address 
+            @low_vulns[item_id]['affected_fqdns'] << fqdn 
           else
             @low_vulns[item_id] = Hash.new
             @low_vulns[item_id]['issue'] = issue
             @low_vulns[item_id]['affected_hosts'] = Array.new
             @low_vulns[item_id]['affected_hosts'] << ip_address
+            @low_vulns[item_id]['affected_fqdns'] = Array.new
+            @low_vulns[item_id]['affected_fqdns'] << fqdn
+
           end
         #Medium Items
         when '2'
           if @medium_vulns[item_id] 
             @medium_vulns[item_id]['affected_hosts'] << ip_address 
+            @medium_vulns[item_id]['affected_fqdns'] << fqdn 
           else
             @medium_vulns[item_id] = Hash.new
             @medium_vulns[item_id]['issue'] = issue
             @medium_vulns[item_id]['affected_hosts'] = Array.new
             @medium_vulns[item_id]['affected_hosts'] << ip_address
+            @medium_vulns[item_id]['affected_fqdns'] = Array.new
+            @medium_vulns[item_id]['affected_fqdns'] << fqdn
+
           end
         #High Items
         when '3'
           if @high_vulns[item_id] 
             @high_vulns[item_id]['affected_hosts'] << ip_address 
+            @high_vulns[item_id]['affected_fqdns'] << fqdn
           else
             @high_vulns[item_id] = Hash.new
             @high_vulns[item_id]['issue'] = issue
             @high_vulns[item_id]['affected_hosts'] = Array.new
             @high_vulns[item_id]['affected_hosts'] << ip_address
+            @high_vulns[item_id]['affected_fqdns'] = Array.new
+            @high_vulns[item_id]['affected_fqdns'] << fqdn
+
           end
         when '4'
           if @critical_vulns[item_id] 
-            @critical_vulns[item_id]['affected_hosts'] << ip_address 
+            @critical_vulns[item_id]['affected_hosts'] << ip_address
+            @critical_vulns[item_id]['fqdns'] << fqdn  
           else
             @critical_vulns[item_id] = Hash.new
             @critical_vulns[item_id]['issue'] = issue
-            @critical_vulns[item_id]['affected_hosts'] = Array.new
-            @critical_vulns[item_id]['affected_hosts'] << ip_address
+            @critical_vulns[item_id]['affected_fqdns'] = Array.new
+            @critical_vulns[item_id]['affected_fqdns'] << fqdn
           end
           
         end
@@ -347,6 +365,7 @@ class NessusautoAnalyzer
       @high_report_file.puts "CVE : " + results['issue']['cve']
       @high_report_file.puts "Exploitability : " + results['issue']['exploitable']
       @high_report_file.puts "Affected Hosts : " + results['affected_hosts'].uniq.join(', ')
+      @high_report_file.puts "Affected Hosts : " + results['affected_fqdns'].uniq.join(', ')
       @high_report_file.puts "\n------------------\n"
     end
     @critical_report_file.puts "Critical Risk Issues"
@@ -356,6 +375,7 @@ class NessusautoAnalyzer
       @critical_report_file.puts "CVE : " + results['issue']['cve']
       @critical_report_file.puts "Exploitability : " + results['issue']['exploitable']
       @critical_report_file.puts "Affected Hosts : " + results['affected_hosts'].uniq.join(', ')
+      @critical_report_file.puts "Affected Hosts : " + results['affected_fqdns'].uniq.join(', ')
       @critical_report_file.puts "\n------------------\n"
     end
     @medium_report_file.puts "Medium Risk Issues"
@@ -365,6 +385,7 @@ class NessusautoAnalyzer
       @medium_report_file.puts "CVE : " + results['issue']['cve']
       @medium_report_file.puts "Exploitability : " + results['issue']['exploitable']
       @medium_report_file.puts "Affected Hosts : " + results['affected_hosts'].uniq.join(', ')
+      @medium_report_file.puts "Affected Hosts : " + results['affected_fqdns'].uniq.join(', ')
       @medium_report_file.puts "\n------------------\n"
     end
     @low_report_file.puts "Low Risk Issues"
@@ -374,6 +395,7 @@ class NessusautoAnalyzer
       @low_report_file.puts "CVE : " + results['issue']['cve']
       @low_report_file.puts "Exploitability : " + results['issue']['exploitable']
       @low_report_file.puts "Affected Hosts : " + results['affected_hosts'].uniq.join(', ')
+      @low_report_file.puts "Affected Hosts : " + results['affected_fqdns'].uniq.join(', ')
       @low_report_file.puts "\n------------------\n"
     end
     

@@ -138,6 +138,7 @@ class NmapautoAnalyzer
     @report_file_name = @base_dir + '/' + @options.report_file
     @report_file = File.new(@report_file_name + '.txt','w+')
     @html_report_file = File.new(@report_file_name + '.html','w+')
+    @excel_report_file_name = @report_file_name + '.xlsx'
     @log.info("New report file created #{@report_file_name}")
   end
 
@@ -153,6 +154,7 @@ class NmapautoAnalyzer
       scan_dirs
       parse_files
       report
+      excel_report
       if @options.html_report
         html_report
       end
@@ -162,6 +164,7 @@ class NmapautoAnalyzer
       @scan_files << @options.scan_file
       parse_files
       report
+      excel_report
       if @options.html_report
         html_report
       end
@@ -330,6 +333,35 @@ class NmapautoAnalyzer
     @html_report_file.puts report.to_html
   end
   
+  def excel_report
+    begin
+      require 'rubyXL'
+    rescue LoadError
+      puts "Couldn't load rubyXL, try gem install rubyXL"
+      exit
+    end
+    
+    workbook = RubyXL::Workbook.new
+    sheet = workbook.worksheets[0]
+    
+    sheet.add_cell(0,0,"IP Address")
+    sheet.add_cell(0,1,"Open Ports")
+    curr_row = 1
+    sorted_hosts = @parsed_hosts.sort_by {|address,find| address.split('.').map{ |digits| digits.to_i}}
+    sorted_hosts.each do |entry|
+      host, ports = entry[0], entry[1]
+      next if ports.length == 0
+      ports_string = ''
+      ports.each do |port,data|
+        ports_string << port + ' , '
+      end
+      sheet.add_cell(curr_row,0,host)
+      sheet.add_cell(curr_row,1,ports_string)
+      curr_row = curr_row + 1
+    end
+    puts "got to the end Filename #{@excel_report_file_name}"
+    workbook.write(@excel_report_file_name)
+  end
   
 
 

@@ -143,6 +143,9 @@ class IcmpRecon
       end
       @ip_address_ranges = File.open(@options.input_file,'r+').readlines
       @ip_address_ranges.each {|line| line.chomp!}
+      #Getting rid of anything that's obviously not an IP address, really it should be 7 I think (4 digits and 3 .'s)
+      @ip_address_ranges.delete_if {|ip| ip.length < 4}
+
     end
 
     if @options.input_ranges.length > 0
@@ -191,7 +194,13 @@ class IcmpRecon
     report.puts "-------------------------"
     report.puts "Address, Echo Response?, Timestamp Response?, Netmask Response?"
     @ip_address_ranges.each do |raw_range|
-      range = IPAddress.parse(raw_range)
+      next unless raw_range
+      begin
+        range = IPAddress.parse(raw_range)
+      rescue ArgumentError
+        puts 'not so good al'
+        next
+      end
       range.each do |address|
         address = address.to_s
         report.print address + ","
