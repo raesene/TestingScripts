@@ -189,6 +189,7 @@ class NmapautoAnalyzer
     #Hash to put the information for each host into
     @parsed_hosts = Hash.new
     @scanned_files = Hash.new
+    @closed_ports = Array.new
     #Ports is an array to contain a list of the unique ports encountered for later feeding to Nessus
     @ports = Array.new
     #port_hash is a hash to contain a list of ports and what hosts have them open
@@ -210,6 +211,11 @@ class NmapautoAnalyzer
       @scanned_files[file][:scan_time] = parser.session.scan_time if parser.session.scan_time
       parser.hosts("up") do |host|
         @parsed_hosts[host.addr] = Hash.new unless @parsed_hosts[host.addr]
+        host.extraports.each do |portstate|
+          if portstate.state == "closed" && portstate.count > 1
+            @closed_ports << host.addr
+          end
+        end
         host.tcp_ports("open") do |port|
           #Add the port to the ports array
           @ports << port.num.to_s
@@ -302,6 +308,16 @@ class NmapautoAnalyzer
       @report_file.puts "-----------------"
       @report_file.puts hosts.uniq.join(', ')
       @report_file.puts "\n\n"
+    end
+
+    @report_file.puts "\n\nHosts with Closed Ports"
+    @report_file.puts "--------------------\n\n"
+    @report_file.puts @closed_ports.uniq.join(', ')
+    @report_file.puts "--------------------\n\n"
+    ipaddresses.each do |add|
+      result = "n"
+      result = "y" if @closed_ports.include?(add)
+      @report_file.puts add + ', ' + result
     end
 
     #TODO: Make this an option in terms of reporting volume
