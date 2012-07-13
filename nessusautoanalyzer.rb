@@ -314,10 +314,12 @@ class NessusautoAnalyzer
         when '4'
           if @critical_vulns[item_id] 
             @critical_vulns[item_id]['affected_hosts'] << ip_address
-            @critical_vulns[item_id]['fqdns'] << fqdn  
+            @critical_vulns[item_id]['affected_fqdns'] << fqdn
           else
             @critical_vulns[item_id] = Hash.new
             @critical_vulns[item_id]['issue'] = issue
+            @critical_vulns[item_id]['affected_hosts'] = Array.new
+            @critical_vulns[item_id]['affected_hosts'] << ip_address
             @critical_vulns[item_id]['affected_fqdns'] = Array.new
             @critical_vulns[item_id]['affected_fqdns'] << fqdn
           end
