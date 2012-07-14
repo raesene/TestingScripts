@@ -67,7 +67,7 @@ class IcmpRecon
     begin
       require 'nokogiri'
     rescue LoadError
-      puts "Couldn't load nokogir"
+      puts "Couldn't load nokogiri"
       puts "try gem install nokogiri"
       exit
     end
@@ -80,6 +80,7 @@ class IcmpRecon
     @options.csv_report = false
     @options.html_report = false
     @options.rtf_report = false
+    @options.bypass_root_check = false
 
     opts = OptionParser.new do |opts|
       opts.banner = "ICMP Reconnaissance Tool #{VERSION}"
@@ -94,6 +95,7 @@ class IcmpRecon
 
       opts.on("-s", "--sudo", "Run nmap commands using sudo") do |sudo|
         @options.nmap_command = 'sudo nmap'
+        @options.bypass_root_check = true
       end
 
       opts.on("--csvReport", "Create a CSV report") do |csvrep|
@@ -112,6 +114,10 @@ class IcmpRecon
         @options.report_file_base = reppref
       end
 
+      opts.on("-b", "Bypass root check") do |bypass|
+        @options.bypass_root_check = true
+      end
+
       opts.on("-h", "--help", "-?", "--?", "Get Help") do |help|
         puts opts
         exit
@@ -128,6 +134,19 @@ class IcmpRecon
     unless @options.input_file.length > 0 || @options.input_ranges.length > 0
       puts "You need to either specify a range or an input file"
       puts opts
+      exit
+    end
+
+    unless Process.uid == 0 || @options.bypass_root_check
+      puts "You need root permissions to run this properly"
+      puts "Either run this script as root or use the sudo option (-s)"
+      puts "or if your sure it's ok, use the -b option to bypass this check"
+      exit
+    end
+
+    unless @options.rtf_report || @options.csv_report || @options.html_report
+      puts "No reporting specified"
+      puts " you need to use one or more of --csvReport, --rtfReport or --htmlReport"
       exit
     end
 
