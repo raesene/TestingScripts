@@ -10,8 +10,9 @@
 #
 # == ToDo
 #
-# *
-# *
+# * Add logging
+# * Add rtf and html reports
+# * Add TRACE and OPTIONS checks
 #
 # == Author
 # Author::  Rory McCune
@@ -64,7 +65,7 @@ class HTTPScan
 
     @hosts.each do |host|
       begin
-        resp = HTTParty.head(host, {:no_follow => true})
+        resp = HTTParty.options(host, {:no_follow => true})
       rescue HTTParty::RedirectionTooDeep => e
         @headers[host] = e.response.each_header
         #@headers[host]['Was Redirect'] = 'True'
@@ -83,17 +84,17 @@ class HTTPScan
 
   def text_report(report_file_base)
     puts "starting report"
-    report_file = File.new(report_file_base + '.txt' , 'a+')
-    report_file.puts "Header Report"
-    report_file.puts "-------------\n"
+    header_report_file = File.new(report_file_base + '.txt' , 'a+')
+    header_report_file.puts "Header Report"
+    header_report_file.puts "-------------\n"
 
     @headers.each do |host, headers|
-      report_file.puts host
-      report_file.puts "----------------"
+      header_report_file.puts host
+      header_report_file.puts "----------------"
       headers.each do |key,val|
-          report_file.puts key + " : " + val
+          header_report_file.puts key + " : " + val
       end
-      report_file.puts "\n\n------------\n\n"
+      header_report_file.puts "\n\n------------\n\n"
     end
 
   end
@@ -102,7 +103,56 @@ class HTTPScan
 
   end
 
-  def rtf_report
+  def rtf_report(report_file_base)
+    begin
+      require 'rtf'
+      require 'uri'
+    rescue LoadError
+      puts "RTF reports need the rtf gem, gem install 'rtf' should do it"
+      exit
+    end
+    document = RTF::Document.new(RTF::Font.new(RTF::Font::ROMAN, 'Arial'))
+    document.paragraph << "Web Server Headers"
+    methods = Hash.new
+    @headers.each do |host, headers|
+      headers.each do |key, val|
+        if key.downcase == 'allow'
+          methods[host] = val
+        end
+      end
+    end
+
+    header_table = document.table(@headers.length + 1, 2,3000,5000)
+    header_table.border_width = 5
+    header_table[0][0] << 'IP Address'
+    header_table[0][1] << "Web Server Headers"
+    row = 1
+    @headers.each do |host, headers|
+      header_table[row][0] << host
+      headers.each do |key,val|
+        header_table[row][1] << key + ' : ' + val
+        header_table[row][1].line_break
+      end
+      row = row + 1
+    end
+
+    document.paragraph << "Web Server Methods"
+
+    methods_table = document.table(methods.length + 1, 2,3000,5000)
+    methods_table.border_width = 5
+    methods_table[0][0] << 'IP Address'
+    methods_table[0][1] << "Methods Supported"
+    mrow = 1
+    methods.each do |host, methods|
+      methods_table[mrow][0] << host
+      methods_table[mrow][1] << methods
+      mrow = mrow + 1
+    end
+
+    rtf_report_file = File.open(report_file_base + '.rtf', 'a+') do |file|
+      file.write(document.to_rtf)
+    end
+
 
   end
 
@@ -196,7 +246,7 @@ if __FILE__ == $0
   end
 
   if options.rtf_report
-    scan.rtf_report
+    scan.rtf_report(options.report_file_base)
   end
 
 
