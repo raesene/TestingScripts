@@ -23,7 +23,7 @@
 #   -v, --version       	Display the version, then exit
 #   -f, --file            File containing servers to scan
 #   --reportPrefix        Prefix for report files (Default is icmp_recon)
-#   --csvReport           Create a CSV report of the results
+#   --textReport           Create a CSV report of the results
 #   --hmtlReport          Create an HTML report of the results
 #   --rtfReport           Create an RTF report of the results
 #
@@ -34,15 +34,67 @@
 
 class HTTPScan
   VERSION = '0.0.1'
-  def initialize
-    require 'logger'
+  def initialize(hosts)
+    begin
+      require 'httparty'
+    rescue LoadError
+      puts "Requires httparty - try gem install httparty"
+      exit
+    end
+
+    #require 'logger'
+
+    #clean up the file so that it's easier to use uri
+    hosts.collect! do |address|
+      unless address =~ /^http/
+        if address.split(':')[1] == '443'
+          address = 'https://' + address
+        else
+          address = 'http://' + address
+        end
+      end
+      address
+    end
+    @hosts = hosts
   end
 
-  def header_scan(hosts)
+  def header_scan
+
+    @headers = Hash.new
+
+    @hosts.each do |host|
+      begin
+        resp = HTTParty.head(host, {:no_follow => true})
+      rescue HTTParty::RedirectionTooDeep => e
+        @headers[host] = e.response.each_header
+        #@headers[host]['Was Redirect'] = 'True'
+        next
+      rescue Timeout::Error
+        puts "Timeout Error on " + host
+        next
+      end
+
+      @headers[host] = resp.headers
+
+    end
+
 
   end
 
-  def csv_report
+  def text_report(report_file_base)
+    puts "starting report"
+    report_file = File.new(report_file_base + '.txt' , 'a+')
+    report_file.puts "Header Report"
+    report_file.puts "-------------\n"
+
+    @headers.each do |host, headers|
+      report_file.puts host
+      report_file.puts "----------------"
+      headers.each do |key,val|
+          report_file.puts key + " : " + val
+      end
+      report_file.puts "\n\n------------\n\n"
+    end
 
   end
 
@@ -68,7 +120,7 @@ if __FILE__ == $0
   options = OpenStruct.new
   options.input_file = ''
   options.report_file_base = 'rep_header_scan'
-  options.csv_report = false
+  options.text_report = false
   options.html_report = false
   options.rtf_report = false
 
@@ -79,8 +131,8 @@ if __FILE__ == $0
       options.input_file = file
     end
 
-    opts.on("--csvReport", "Create a CSV Report") do |csvrep|
-      options.csv_report = true
+    opts.on("--textReport", "Create a text Report") do |textrep|
+      options.text_report = true
     end
 
     opts.on("--htmlReport", "Create an HTML Report") do |htmlrep|
@@ -115,9 +167,9 @@ if __FILE__ == $0
     exit
   end
 
-  unless options.rtf_report || options.csv_report || options.html_report
+  unless options.rtf_report || options.text_report || options.html_report
     puts "no reporting specified"
-    puts "you need to use one of --csvReport, --htmlReport or --rtfReport"
+    puts "you need to use one of --textReport, --htmlReport or --rtfReport"
     puts opts
     exit
   end
@@ -131,12 +183,12 @@ if __FILE__ == $0
     exit
   end
 
-  scan = HTTPScan.new
+  scan = HTTPScan.new(input_hosts)
 
-  scan.header_scan(input_hosts)
+  scan.header_scan
 
-  if options.csv_report
-    scan.csv_report
+  if options.text_report
+    scan.text_report(options.report_file_base)
   end
 
   if options.html_report
