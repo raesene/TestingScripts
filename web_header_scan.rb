@@ -73,6 +73,10 @@ class HTTPScan
       rescue Timeout::Error
         puts "Timeout Error on " + host
         next
+      rescue Exception => e
+        puts "Error on " + host
+        puts e.to_s
+        next
       end
 
       @headers[host] = resp.headers
