@@ -4,8 +4,8 @@
 
 
 class KisAnalysis
-  VERSION = '0.12'
-  #Copyright (C) 2011  Rory McCune
+  VERSION = '0.13'
+  #Copyright (C) 2012  Rory McCune
   #This program is free software; you can redistribute it and/or
   #modify it under the terms of the GNU General Public License
   #as published by the Free Software Foundation; either version 2
@@ -30,6 +30,7 @@ class KisAnalysis
 	  
     rescue LoadError
       abort("FATALITY: kis_analysis required the nokogiri gem to work.  Try 'gem install nokogiri'\n for linux installs 'apt-get install libxslt libxml2 libxml2-dev' is needed before installing the gem")
+      exit
     end
 
     @log = Logger.new("kis-analysis.log")
@@ -78,18 +79,14 @@ class KisAnalysis
       opts.banner = "Ruby Kismet Log File Analyzer"
 
       opts.on("-fFILE","--file FILE", "kismet netxml file to analyze") do |file|
-        @log.debug("Trying to open Input File")
         @options.input_file_name = file
       end
 
       opts.on("-dDIR","--dir DIR","Directory with kismet netxml files to analyze") do |dir|
-        @log.debug("Setting Directory")
         @options.input_dir_name = dir
-        #TODO: Need to create a check for openable directory here
       end
 
       opts.on("-rREPORT","--report REPORT","report file") do |rep|
-        @log.debug("setting report file")
         @options.report_file = rep
       end
 
@@ -208,9 +205,9 @@ class KisAnalysis
         elsif net.attribute('type').value == 'probe'
           analyse_net(net, 'probe')
         elsif net.attribute('type').value == 'ad-hoc'
-		      analyse_net(net,'adhoc')
-		    else
-		      @log.warn("hit an unknown Wireless network type #{net.attribute('type').value}")
+          analyse_net(net,'adhoc')
+	else
+	  @log.warn("hit an unknown Wireless network type #{net.attribute('type').value}")
         end
       end
     end
@@ -245,9 +242,7 @@ class KisAnalysis
     @report << '<hr /><br /><br />'
     html_report_adhoc
     @report << '<hr /><br /><br />'
-	html_report_probe
-    
-    
+    html_report_probe
     @report << "</body>"
     @report << "</html>"
   end
@@ -399,7 +394,7 @@ class KisAnalysis
   #creates the report section for Infrastructure Networks
   def html_report_inf
     @report << '<div id="title">Infrastructure Networks</div><br /><br />'
-	  @log.debug("Starting reporting Infrastructure networks there were " + @infrastructure_networks.length.to_s + " networks to list")
+    @log.debug("Starting reporting Infrastructure networks there were " + @infrastructure_networks.length.to_s + " networks to list")
     @infrastructure_networks.each do |ssid,bssid|
       tab = Ruport::Data::Table(%w[bssid num_clients channel cipher cloaked? manufacturer first_seen last_seen max_signal_dbm])
       ssid = "Hidden or Blank" if ssid.length < 1
@@ -473,8 +468,7 @@ class KisAnalysis
       return if net.xpath('packets/total').children[0].text.to_i < 2
     end
 
-
-	  manufacturer = net.search('manuf')[0].text
+    manufacturer = net.search('manuf')[0].text
     begin
       encryption_cipher = net.search('encryption')[0].text
     rescue NoMethodError
@@ -489,14 +483,13 @@ class KisAnalysis
 
 
 
-	  case type
+    case type
       when "inf", "adhoc"
         begin
           bssid = net.search('BSSID')[0].text
           essid = ''
           pack_count = 0
           net.xpath('SSID').each do |test_ssid|
-
             if essid == ''
               essid = test_ssid.xpath('essid').text
               pack_count = test_ssid.xpath('packets').text.to_i
@@ -509,12 +502,12 @@ class KisAnalysis
 
           end
           channel = net.search('channel')[0].text
-			    #TODO: Complete Hack make this nicer we need to find the essid where there are multiple instances of it sometimes it's reporting blank.
-			    if essid.length <2 && net.search('essid').length > 1
-			      essid = essid + net.search('essid')[1].text
-			    end
-		      first_seen = net.attribute('first-time').value
-		      last_seen = net.attribute('last-time').value
+          #TODO: Complete Hack make this nicer we need to find the essid where there are multiple instances of it sometimes it's reporting blank.
+	  if essid.length <2 && net.search('essid').length > 1
+	    essid = essid + net.search('essid')[1].text
+          end
+          first_seen = net.attribute('first-time').value
+          last_seen = net.attribute('last-time').value
           cloaked = net.search('essid')[0].attribute('cloaked').text
           #This has is needed for the Google Maps Setup
           @nets_by_bssid[bssid] = Hash.new
@@ -522,26 +515,25 @@ class KisAnalysis
           @nets_by_bssid[bssid]['channel'] = channel
           @nets_by_bssid[bssid]['cipher'] = encryption_cipher
           @nets_by_bssid[bssid]['cloaked'] = cloaked
-
-		    rescue NoMethodError
+        rescue NoMethodError
           @log.warn("Can't find the key data for this network skipping")
           return
         end
       when "probe"
         begin
-  	      bssid = net.search('BSSID')[0].text
-  		    essid = 'probe'
-  	    rescue NoMethodError
+          bssid = net.search('BSSID')[0].text
+          essid = 'probe'
+  	rescue NoMethodError
           @log.warn("Can't find the key data for this network skipping")
           return
         end
-  	end
+      end
 
     begin
-  	  max_signal_dbm = net.search('max_signal_dbm')[0].text
-   	rescue NoMethodError
-  	  @log.debug("No Max Signal for Network : " + essid)
-	    max_signal_dbm = "N/A"
+      max_signal_dbm = net.search('max_signal_dbm')[0].text
+    rescue NoMethodError
+      @log.debug("No Max Signal for Network : " + essid)
+      max_signal_dbm = "N/A"
     end
 
 
@@ -564,12 +556,12 @@ class KisAnalysis
       @infrastructure_networks[essid][bssid]['cipher'] = encryption_cipher
       @infrastructure_networks[essid][bssid]['cloaked'] = cloaked
       @infrastructure_networks[essid][bssid]['clients'] = clients
-  	  @infrastructure_networks[essid][bssid]['manufacturer'] = manufacturer
-  	  @infrastructure_networks[essid][bssid]['max_signal_dbm'] = max_signal_dbm
-	    @infrastructure_networks[essid][bssid]['first_seen'] = first_seen
-  	  @infrastructure_networks[essid][bssid]['last_seen'] = last_seen
+      @infrastructure_networks[essid][bssid]['manufacturer'] = manufacturer
+      @infrastructure_networks[essid][bssid]['max_signal_dbm'] = max_signal_dbm
+      @infrastructure_networks[essid][bssid]['first_seen'] = first_seen
+      @infrastructure_networks[essid][bssid]['last_seen'] = last_seen
     elsif type == 'adhoc'
-	    unless @adhoc_networks[essid]
+      unless @adhoc_networks[essid]
         @adhoc_networks[essid] = Hash.new
       end
 
@@ -580,16 +572,16 @@ class KisAnalysis
       @adhoc_networks[essid][bssid]['channel'] = channel
       @adhoc_networks[essid][bssid]['cipher'] = encryption_cipher
       @adhoc_networks[essid][bssid]['cloaked'] = cloaked
-	    @adhoc_networks[essid][bssid]['manufacturer'] = manufacturer
-  	  @adhoc_networks[essid][bssid]['max_signal_dbm'] = max_signal_dbm
-  	  @adhoc_networks[essid][bssid]['first_seen'] = first_seen
-  	  @adhoc_networks[essid][bssid]['last_seen'] = last_seen
+      @adhoc_networks[essid][bssid]['manufacturer'] = manufacturer
+      @adhoc_networks[essid][bssid]['max_signal_dbm'] = max_signal_dbm
+      @adhoc_networks[essid][bssid]['first_seen'] = first_seen
+      @adhoc_networks[essid][bssid]['last_seen'] = last_seen
     elsif type == 'probe'
-	    unless @probe_networks[bssid]
+      unless @probe_networks[bssid]
         @probe_networks[bssid] = Hash.new
       end
-	    @probe_networks[bssid]['manufacturer'] = manufacturer
-	  end
+      @probe_networks[bssid]['manufacturer'] = manufacturer
+    end
   end
 
   def analyse_gps
@@ -597,7 +589,7 @@ class KisAnalysis
     
     @doc.search('wireless-network').each do |net|
       if @options.gps
-	      next if net.attribute('type').value == 'probe'
+        next if net.attribute('type').value == 'probe'
         next unless net.search('peak-lat').length > 0 && net.search('peak-lon').length > 0
         bssid = net.search('BSSID').text
         @options.gps_data[bssid] = Hash.new
@@ -666,44 +658,42 @@ class KisAnalysis
   
   def text_report
     @txt_rep = File.new(@options.report_file + '.txt', 'w+')
-	  @txt_rep.puts "Kismet Text Report"
-	  @txt_rep.puts "-----------------------------"
-	  @txt_rep.puts "Infrastructure networks"
-	  @txt_rep.puts "------------------------------"
-	  @infrastructure_networks.each do |essid,bssid|
-	    @txt_rep.puts " "
-	    @txt_rep.puts "Network : " + essid
-	    @txt_rep.puts "-------------------"
-	    bssid.each do |net,info|
-  	    @txt_rep.puts net + ',' + info['channel'] + ',' + info['clients'].length.to_s + ',' + info['cipher'] + ',' + info['manufacturer']
-  	  end
-  	end
-  	@txt_rep.puts " "
-  	@txt_rep.puts " "
-  	@txt_rep.puts " "
-  	@txt_rep.puts "-----------------------------"
-  	@txt_rep.puts "ad-hoc networks"
-  	@txt_rep.puts "------------------------------"
-  	@adhoc_networks.each do |essid,bssid|
-  	  @txt_rep.puts " "
-  	  @txt_rep.puts "Network : " + essid
-  	  @txt_rep.puts "------------------"
-  	  bssid.each do |net,info|
-  	    @txt_rep.puts net + ',' + info['channel'] + ',' + info['cipher'] + ',' + info['manufacturer']
-	    end
-  	end
-  	@txt_rep.puts " "
-  	@txt_rep.puts " "
-  	@txt_rep.puts " "
-  	@txt_rep.puts "-----------------------------"
-  	@txt_rep.puts "Probe requests"
-	  @txt_rep.puts "------------------------------"
-	  @probe_networks.each do |bssid, info|
-  	  @txt_rep.puts bssid + ',' + info['manufacturer']
-  	end
+    @txt_rep.puts "Kismet Text Report"
+    @txt_rep.puts "-----------------------------"
+    @txt_rep.puts "Infrastructure networks"
+    @txt_rep.puts "------------------------------"
+    @infrastructure_networks.each do |essid,bssid|
+      @txt_rep.puts " "
+      @txt_rep.puts "Network : " + essid
+      @txt_rep.puts "-------------------"
+      bssid.each do |net,info|
+        @txt_rep.puts net + ',' + info['channel'] + ',' + info['clients'].length.to_s + ',' + info['cipher'] + ',' + info['manufacturer']
+      end
+    end
+    @txt_rep.puts " "
+    @txt_rep.puts " "
+    @txt_rep.puts " "
+    @txt_rep.puts "-----------------------------"
+    @txt_rep.puts "ad-hoc networks"
+    @txt_rep.puts "------------------------------"
+    @adhoc_networks.each do |essid,bssid|
+      @txt_rep.puts " "
+      @txt_rep.puts "Network : " + essid
+      @txt_rep.puts "------------------"
+      bssid.each do |net,info|
+        @txt_rep.puts net + ',' + info['channel'] + ',' + info['cipher'] + ',' + info['manufacturer']
+      end
+    end
+    @txt_rep.puts " "
+    @txt_rep.puts " "
+    @txt_rep.puts " "
+    @txt_rep.puts "-----------------------------"
+    @txt_rep.puts "Probe requests"
+    @txt_rep.puts "------------------------------"
+    @probe_networks.each do |bssid, info|
+      @txt_rep.puts bssid + ',' + info['manufacturer']
+    end
   end
-
-  
 end
 
 if __FILE__ == $0
@@ -711,5 +701,4 @@ if __FILE__ == $0
   analysis.analyse
   analysis.html_report
   analysis.text_report
-  
 end

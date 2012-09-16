@@ -97,7 +97,8 @@ class WebScreenRecon
     Dir.chdir(@options.output_dir)
     @target_addresses.each do |ip|
       begin
-        cap = CapIt::Capture(ip , :filename => ip.gsub(/[\,\:\/]/,'_') + ".jpeg")
+        puts ip.gsub(/[\,\:\/]/,'_') + ".jpeg"
+        cap = CapIt::Capture(ip , :filename => ip.gsub(/[\.\,\:\/]/,'_') + ".jpeg")
         @output_file_names[ip] = cap
         @log.info("Saved " + ip)
       rescue TypeError
