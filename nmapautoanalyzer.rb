@@ -361,21 +361,30 @@ class NmapautoAnalyzer
     sheet = workbook.worksheets[0]
     
     sheet.add_cell(0,0,"IP Address")
-    sheet.add_cell(0,1,"Open Ports")
+    sheet.add_cell(0,1,"TCP Ports")
+    sheet.add_cell(0,2,"UDP Ports")
     curr_row = 1
     sorted_hosts = @parsed_hosts.sort_by {|address,find| address.split('.').map{ |digits| digits.to_i}}
     sorted_hosts.each do |entry|
       host, ports = entry[0], entry[1]
       next if ports.length == 0
-      ports_string = ''
+      tcp_ports = Array.new
+      udp_ports = Array.new
       ports.each do |port,data|
-        ports_string << port + ' , '
+        portnum, protocol = port.split(' - ')
+        if protocol == 'TCP'
+          tcp_ports << portnum
+        elsif protocol == 'UDP'
+          udp_ports << portnum
+        end
+
       end
       sheet.add_cell(curr_row,0,host)
-      sheet.add_cell(curr_row,1,ports_string)
+      sheet.add_cell(curr_row,1,tcp_ports.join(','))
+      sheet.add_cell(curr_row,2,udp_ports.join(','))
       curr_row = curr_row + 1
     end
-    puts "got to the end Filename #{@excel_report_file_name}"
+
     workbook.write(@excel_report_file_name)
   end
   
