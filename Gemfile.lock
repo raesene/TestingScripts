@@ -1,0 +1,36 @@
+GEM
+  remote: http://rubygems.org/
+  specs:
+    color (1.4.1)
+    fastercsv (1.5.5)
+    httparty (0.9.0)
+      multi_json (~> 1.0)
+      multi_xml
+    ipaddress (0.8.0)
+    kramdown (0.14.0)
+    multi_json (1.3.7)
+    multi_xml (0.5.1)
+    nmap-parser (0.3.5)
+    nokogiri (1.5.5)
+    pdf-writer (1.1.8)
+      color (>= 1.4.0)
+      transaction-simple (~> 1.3)
+    rtf (0.3.3)
+    rubyXL (1.2.10)
+    ruport (1.6.3)
+      fastercsv
+      pdf-writer (= 1.1.8)
+    transaction-simple (1.4.0.2)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  httparty
+  ipaddress
+  kramdown
+  nmap-parser
+  nokogiri
+  rtf
+  rubyXL
+  ruport

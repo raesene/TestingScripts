@@ -151,11 +151,13 @@ class NessusautoAnalyzer
       scan_dirs
       parse_files
       report
+      excel_report
     when :file
       @scan_files = Array.new
       @scan_files << @options.scan_file
       parse_files
       report
+      excel_report
     end
   end
 
@@ -213,6 +215,8 @@ class NessusautoAnalyzer
       fqdn = host.search('tag[@name="host-fqdn"]').text
       #Setup a hash to store the issues by host
       @parsed_hosts[ip_address] = Hash.new
+      @parsed_hosts[ip_address]['fqdn'] = fqdn
+      @parsed_hosts[ip_address]['os'] = operating_system
 
       #Create a nodeset of the items in the report
       report_items = host.search('ReportItem')
@@ -230,6 +234,8 @@ class NessusautoAnalyzer
         issue['title'] = item['pluginName']
         issue['exploitable'] = item.xpath('exploitability_ease').text
         issue['plugin_output'] = item.xpath('plugin_output').text
+        issue['cvss_score'] = item.xpath('cvss_base_score').text
+        issue['cvss_vector'] = item.xpath('cvss_vector').text
 
         #Create an array and shove the cve texts in there as it makes it easy to concat them afterwards
         cve_array = Array.new
@@ -335,6 +341,99 @@ class NessusautoAnalyzer
   end
 
 
+  def excel_report
+    begin
+      require 'rubyXL'
+    rescue LoadError
+      puts "The Excel Report requires rubyXL"
+      exit
+    end
+
+    workbook = RubyXL::Workbook.new
+    workbook.worksheets << RubyXL::Worksheet.new(workbook, 'Vulnerability Details')
+    workbook.worksheets << RubyXL::Worksheet.new(workbook, 'Host list summary')
+    workbook.worksheets << RubyXL::Worksheet.new(workbook, 'Open port list')
+    report_info_sheet = workbook.worksheets[0]
+    report_info_sheet.sheet_name = "Report info"
+    vulnerability_details_sheet = workbook.worksheets[1]
+    host_list_summary_sheet = workbook.worksheets[2]
+    open_ports_list_sheet = workbook.worksheets[3]
+
+    #Setup the report Info Page
+    report_info_sheet.add_cell(5,1,"Report type")
+    report_info_sheet.add_cell(6,1,"Report ID")
+    report_info_sheet.add_cell(7,1,"Date report was created")
+    report_info_sheet.add_cell(8,1,"Timezone for Dates")
+    report_info_sheet.add_cell(9,1,"Report Created For")
+    report_info_sheet.add_cell(10,1,"Number of scans")
+    report_info_sheet.add_cell(11,1,"Number of Findings Found")
+    report_info_sheet.add_cell(13,1,"Prepared by: ")
+    report_info_sheet.add_cell(14,1,"QA: ")
+
+
+    #maps to host[issue]['risk_factor']
+    vulnerability_details_sheet.add_cell(6,0,"Risk Factor")
+    #maps to key value
+    vulnerability_details_sheet.add_cell(6,1, "Host")
+    #maps to host['fqdn']
+    vulnerability_details_sheet.add_cell(6,2, "Hostname")
+    #Hmm this one will be harder to populate
+    vulnerability_details_sheet.add_cell(6,3,"NetBIOS")
+    #maps to host['os']
+    vulnerability_details_sheet.add_cell(6,4, "Platform")
+    #maps to host[issue]
+    vulnerability_details_sheet.add_cell(6,5, "Vulnerability Checks")
+    #maps to host[issue]['title']
+    vulnerability_details_sheet.add_cell(6,6, "Name")
+    #maps to host[issue]['port']
+    vulnerability_details_sheet.add_cell(6,7, "Port/Protocol")
+    #TODO
+    #vulnerability_details_sheet.add_cell(6,8, "service")
+    #TODO
+    #vulnerability_details_sheet.add_cell(6,9, "Type")
+    #maps to host[issue]['cvss_score']
+    vulnerability_details_sheet.add_cell(6,10, "CVSS Score")
+    #maps to host[issue]['cvss_vector']
+    vulnerability_details_sheet.add_cell(6,11, "CVSS vector")
+    #maps to host[issue]['description']
+    vulnerability_details_sheet.add_cell(6,12, "Description")
+    #maps to host[issue]['plugin_output']
+    vulnerability_details_sheet.add_cell(6,13, "Information")
+    #TODO
+    #vulnerability_details_sheet.add_cell(6,14, "Solution")
+
+    row_count = 7
+    @parsed_hosts.each do |address, information|
+      fqdn = information.delete('fqdn')
+      os = information.delete('os')
+      information.each do |item, issue|
+        vulnerability_details_sheet.add_cell(row_count, 0, issue['risk_factor'])
+        vulnerability_details_sheet.add_cell(row_count, 1, address)
+        vulnerability_details_sheet.add_cell(row_count, 2, fqdn)
+        vulnerability_details_sheet.add_cell(row_count, 3, " ")
+        vulnerability_details_sheet.add_cell(row_count, 4, os)
+        vulnerability_details_sheet.add_cell(row_count, 5, item)
+        vulnerability_details_sheet.add_cell(row_count, 6, issue['title'])
+        vulnerability_details_sheet.add_cell(row_count, 7, issue['port'])
+        vulnerability_details_sheet.add_cell(row_count, 8, " ")
+        vulnerability_details_sheet.add_cell(row_count, 9, " ")
+        vulnerability_details_sheet.add_cell(row_count, 10, issue['cvss_score'])
+        vulnerability_details_sheet.add_cell(row_count, 11, issue['cvss_vector'])
+        vulnerability_details_sheet.add_cell(row_count, 12, issue['description'])
+        vulnerability_details_sheet.add_cell(row_count, 13, issue['plugin_output'])
+        row_count = row_count + 1
+      end
+    end
+
+
+
+
+
+    #TODO: See if this call will respect directories
+    workbook.write(@options.report_file + '.xlsx')
+  end
+
+
   #Create text reports
   def report
     @exploitable_report_file = File.new(@base_dir + '/' + @options.report_file + '_nessus_exploitable.txt','w+')
@@ -410,11 +509,14 @@ class NessusautoAnalyzer
     @parsed_hosts.each do |ip_address, results|
       @host_report_file.puts "Results for #{ip_address}"
       @host_report_file.puts "=======================\n"
+      #Remove the two keys from the hash which aren't findings
+      results.delete('fqdn')
+      results.delete('os')
       results.each do |item,issue|
         @host_report_file.puts issue['title']
-	@host_report_file.puts "CVE : " + issue['cve'] if issue['cve'].length > 0
-	@host_report_file.puts "Severity : " + issue['severity']
-	@host_report_file.puts "Description : " + issue['description']
+	      @host_report_file.puts "CVE : " + issue['cve'] if issue['cve'].length > 0
+	      @host_report_file.puts "Severity : " + issue['severity']
+	      @host_report_file.puts "Description : " + issue['description']
         @host_report_file.puts ""
         @host_report_file.puts "Plugin Output: " + issue['plugin_output'] if issue['plugin_output'].length > 0
         @host_report_file.puts "\n-------------------\n"
