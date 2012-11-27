@@ -380,8 +380,8 @@ class NmapautoAnalyzer
 
       end
       sheet.add_cell(curr_row,0,host)
-      sheet.add_cell(curr_row,1,tcp_ports.join(','))
-      sheet.add_cell(curr_row,2,udp_ports.join(','))
+      sheet.add_cell(curr_row,1,tcp_ports.join(', '))
+      sheet.add_cell(curr_row,2,udp_ports.join(', '))
       curr_row = curr_row + 1
     end
 
