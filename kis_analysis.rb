@@ -440,20 +440,19 @@ class KisAnalysis
   #Sets up the report for Probe Networks
   def html_report_probe
     @log.debug("Starting to report probe networks, there were " + @probe_networks.length.to_s + " to report")
-	@report << '<div id="title">Probe Networks</div><br /><br />'
-	@probe_tab = Ruport::Data::Table(%w[bssid manufacturer])
-	@probe_networks.each do |probe,info|
-	  if @options.gps_data[probe]
-        point = probe
-        @log.debug("attempting to add link")
-        url = 'http://maps.google.co.uk/maps?q=' + @options.gps_data[point]['lat'].to_s + ',' + @options.gps_data[point]['lon'].to_s
-      probe = '<a href="' + url + '">' + point + '</a>'
+    @report << '<div id="title">Probe Networks</div><br /><br />'
+    @probe_tab = Ruport::Data::Table(%w[bssid manufacturer])
+    @probe_networks.each do |probe,info|
+      if @options.gps_data[probe]
+          point = probe
+          @log.debug("attempting to add link")
+          url = 'http://maps.google.co.uk/maps?q=' + @options.gps_data[point]['lat'].to_s + ',' + @options.gps_data[point]['lon'].to_s
+        probe = '<a href="' + url + '">' + point + '</a>'
       end
-	  @probe_tab << [probe, info['manufacturer']]
-	end
-	
-	@report << @probe_tab.to_html
-	@report << "<br /><br />"
+      @probe_tab << [probe, info['manufacturer']]
+    end
+	  @report << @probe_tab.to_html
+	  @report << "<br /><br />"
   end
 
   def html_report_map_body
