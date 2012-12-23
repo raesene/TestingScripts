@@ -33,11 +33,6 @@ class NessusautoRun
       host_url.set_port = 8834
     end
 
-
-
-
-
-
     @host = host_url.to_s
 
     @agent = Mechanize.new
@@ -45,11 +40,11 @@ class NessusautoRun
     @agent.verify_mode = OpenSSL::SSL::VERIFY_NONE
 
     #Troubleshooting stuff
-    @agent.set_proxy 'localhost', 8080
-    @agent.idle_timeout = 1
-    @agent.keep_alive=false
+    #@agent.set_proxy 'localhost', 8080
+    #@agent.idle_timeout = 1
+    #@agent.keep_alive=false
 
-    login_url = @host + 'login'
+    login_url = @host + '/login'
 
     login_response = @agent.post(login_url, {:login => username, :password => password})
 
@@ -65,7 +60,7 @@ class NessusautoRun
   end
 
   def list_policies
-    list_policy_url = @host + 'policy/list'
+    list_policy_url = @host + '/policy/list'
     list_policy_response = @agent.get(list_policy_url)
     policy_xml = Nokogiri::XML(list_policy_response.body)
     policy_names = policy_xml.xpath('//reply/contents/policies/policy/policyName').collect {|name| name.text}
@@ -77,7 +72,7 @@ class NessusautoRun
 
   def run_scan(hosts, pol_id, s_name)
     #Todo: Need validation for hostnames and policy IDs
-    scan_url = @host + 'scan/new'
+    scan_url = @host + '/scan/new'
     scan_response = @agent.post(scan_url, {:target => hosts, :policy_id => pol_id, :scan_name => s_name})
     scan_response_xml = Nokogiri::XML(scan_response.body)
     scan_id = scan_response_xml.xpath('//reply/contents/scan/uuid').text
@@ -87,7 +82,7 @@ class NessusautoRun
 
   def get_report(name)
     #ToDo:  Add a call to the report list to check the scan status before trying to download it
-    report_url = @host + 'file/report/download'
+    report_url = @host + '/file/report/download'
     report_uid = @executed_scans[name]
     report_response = @agent.post(report_url, {:report => report_uid})
     puts report_response.body.size.to_s + " is the size of the report"
