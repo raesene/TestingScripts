@@ -35,9 +35,9 @@
   # == Usage
   #
   #   Directory Mode
-  #   nmapautoanalyzer.rb -m directory -d <directoryname> -r <reportfile>
+  #   nessusautoanalyzer.rb -m directory -d <directoryname> -r <reportfile>
   #   File Mode
-  #   nmapautoanalyzer.rb -m file -f <filename> -r <reportfile>
+  #   nessusautoanalyzer.rb -m file -f <filename> -r <reportfile>
 
 
 
