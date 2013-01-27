@@ -152,12 +152,14 @@ class NessusautoAnalyzer
       parse_files
       report
       excel_report
+      ms_vuln_report
     when :file
       @scan_files = Array.new
       @scan_files << @options.scan_file
       parse_files
       report
       excel_report
+      ms_vuln_report
     end
   end
 
@@ -338,6 +340,95 @@ class NessusautoAnalyzer
   # Not yet implemented
   def parse_v1_results(doc)
     puts "Sorry not implemented yet :) "
+  end
+
+
+  def ms_vuln_report
+    begin
+      require 'rubyXL'
+    rescue LoadError
+      puts "the MS Vuln Report requires rubyXL"
+    end
+    puts "started the MS Vuln Report"
+    workbook = RubyXL::Workbook.new
+    workbook.worksheets << RubyXL::Worksheet.new(workbook, 'MS Patch List by Host')
+    host_sheet = workbook.worksheets[1]
+    vuln_sheet = workbook.worksheets[0]
+    vuln_sheet.sheet_name = "MS Patch List by Issue"
+    host_sheet = workbook.worksheets[1]
+
+    vuln_sheet.add_cell(1,0, "Microsoft ID")
+    vuln_sheet.add_cell(1,1, "Affected Hosts")
+    
+    #Iterate over Critical Issues
+    vuln_sheet.add_cell(2,0, "=====Critical Issues =====")
+    # counter for current row
+    row_count = 3
+    puts "doing Crit"
+    @critical_vulns.each do |item, results|
+      if results['issue']['title'] =~ /^MS[0-9][0-9]-[0-9][0-9][0-9]/
+        vuln_sheet.add_cell(row_count, 0, results['issue']['title'])
+        vuln_sheet.add_cell(row_count, 1, results['affected_hosts'].uniq.join(', '))
+        row_count = row_count + 1
+      end
+
+    end
+
+    #Iterate over High Issues
+    vuln_sheet.add_cell(row_count,0, "=====High Risk Issues ====")
+    row_count = row_count + 1
+    @high_vulns.each do |item, results|
+      if results['issue']['title'] =~ /^MS[0-9][0-9]-[0-9][0-9][0-9]/
+        vuln_sheet.add_cell(row_count, 0, results['issue']['title'])
+        vuln_sheet.add_cell(row_count, 1, results['affected_hosts'].uniq.join(', '))
+        row_count = row_count + 1
+      end
+    end
+
+
+    #Iterate over Medium Issues
+    vuln_sheet.add_cell(row_count,0, "=====Medium Risk Issues ====")
+    row_count = row_count + 1
+    @medium_vulns.each do |item, results|
+      if results['issue']['title'] =~ /^MS[0-9][0-9]-[0-9][0-9][0-9]/
+        vuln_sheet.add_cell(row_count, 0, results['issue']['title'])
+        vuln_sheet.add_cell(row_count, 1, results['affected_hosts'].uniq.join(', '))
+        row_count = row_count + 1
+      end
+    end
+
+
+    #Iterate over Low Issues
+    vuln_sheet.add_cell(row_count,0, "=====Low Risk Issues ====")
+    row_count = row_count + 1
+    @low_vulns.each do |item, results|
+      if results['issue']['title'] =~ /^MS[0-9][0-9]-[0-9][0-9][0-9]/
+        vuln_sheet.add_cell(row_count, 0, results['issue']['title'])
+        vuln_sheet.add_cell(row_count, 1, results['affected_hosts'].uniq.join(', '))
+        row_count = row_count + 1
+      end
+    end
+
+    host_sheet.add_cell(1, 0, "IP Address")
+    host_sheet.add_cell(1,1, "List of missing MS patches")
+    row_count = 2
+
+    @parsed_hosts.each do |address, information|
+      host_sheet.add_cell(row_count, 0, address)
+      ms_array = Array.new
+      information.each do |item, issue|
+        #TODO: Work out how to tidy this up shouldn't need two array calls
+        if issue['title'] =~ /^MS[0-9][0-9]-[0-9][0-9][0-9]/
+          ms_array << issue['title'].scan(/^MS[0-9][0-9]-[0-9][0-9][0-9]/)[0]
+        end
+      end
+      host_sheet.add_cell(row_count, 1, ms_array.join(', '))
+      row_count = row_count + 1
+      puts "row Count #{row_count}"
+    end
+
+    puts "About to write MS vulns"
+    workbook.write(@options.report_file + 'ms_vulns.xlsx')
   end
 
 
