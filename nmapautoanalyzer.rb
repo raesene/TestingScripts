@@ -76,6 +76,7 @@ class NmapautoAnalyzer
     @options.scan_file = ''
     @options.scan_type = :notset
     @options.html_report = false
+    @options.ignore_chatty = false
 
     opts = OptionParser.new do |opts|
       opts.banner = "Nmap Auto Analyzer #{VERSION}"
@@ -100,6 +101,10 @@ class NmapautoAnalyzer
 
       opts.on("--html-report", "Generate an HTML report as well as the txt one") do |html|
         @options.html_report = true
+      end
+
+      opts.on("-i", "--ignoreChatty", "Ignore Chatty Hosts (over 900 open tcp ports") do |ignore|
+        @options.ignore_chatty = true
       end
 
       opts.on("-h", "--help", "-?", "--?", "Get Help") do |help|
@@ -210,6 +215,8 @@ class NmapautoAnalyzer
       @scanned_files[file][:scan_args] = parser.session.scan_args if parser.session.scan_args
       @scanned_files[file][:scan_time] = parser.session.scan_time if parser.session.scan_time
       parser.hosts("up") do |host|
+        #TODO: we should add UDP here too, but watch for no-response otherwise we'll get false positive centraled.
+        next if @options.ignore_chatty && host.tcp_ports("open").length > 900
         @parsed_hosts[host.addr] = Hash.new unless @parsed_hosts[host.addr]
         host.extraports.each do |portstate|
           if portstate.state == "closed" && portstate.count > 1
@@ -295,8 +302,9 @@ class NmapautoAnalyzer
         @report_file.print ", Service Product name is #{data[:product]}" if data[:product]
         @report_file.print ", Up reason is #{data[:reason]}" if data[:reason]
         @report_file.puts ""
-        @report_file.puts ""
+        
       end
+      @report_file.puts ""
       @report_file.puts "-------------------"
       @report_file.puts ""
     end
