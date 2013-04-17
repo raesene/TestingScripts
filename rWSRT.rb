@@ -13,10 +13,11 @@ class WebScreenRecon
     require 'ostruct'
 
     begin
-      require 'capit'
+      require 'headless'
+      require 'selenium-webdriver'
     rescue LoadError
-      puts "Couldn't load the capit gem you'll need to set it up along with CutyCapt"
-      puts "Instructions are here https://github.com/meadvillerb/capit"
+      puts "Couldn't install required gems"
+      puts "Try bundle install or gem install headless selenium-webdriver"
       exit
     end
 
@@ -93,16 +94,25 @@ class WebScreenRecon
   end
 
   def cap
-
+    @headless = Headless.new
+    @headless.start
+    Selenium::WebDriver::Firefox.path = '/usr/lib/firefox/firefox'
+    @driver = Selenium::WebDriver.for :firefox
     Dir.chdir(@options.output_dir)
     @target_addresses.each do |ip|
       begin
-        puts ip.gsub(/[\,\:\/]/,'_') + ".jpeg"
-        cap = CapIt::Capture(ip , :filename => ip.gsub(/[\.\,\:\/]/,'_') + ".jpeg")
-        @output_file_names[ip] = cap
+        filename = ip.gsub(/[\,\:\/]/,'_') + ".png"
+        puts filename
+        
+        @driver.navigate.to ip
+        @headless.take_screenshot(filename)
+        @output_file_names[ip] = filename
         @log.info("Saved " + ip)
-      rescue TypeError
+      rescue Timeout::Error
         @log.warn "Whoops didn't work with address " + ip
+        #If we timeout close the driver and open a new one
+        @driver.quit
+        @driver = Selenium::WebDriver.for :firefox
       end
     end
   end
