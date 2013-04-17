@@ -258,7 +258,7 @@ class NessusautoAnalyzer
           if item.xpath('plugin_output').text =~ /TLSv1|SSLv3/
             @web_server_list << 'https://' + ip_address + ':' + item['port']
           else
-            @web_server_list << 'http://' + ip_address + ':' + item['port']
+            @web_server_list << 'http://' + ip_address + ':' + item['port'] unless item['port'] == '443'
           end
         end
         
@@ -532,6 +532,7 @@ class NessusautoAnalyzer
     @high_report_file = File.new(@base_dir + '/' + @options.report_file + '_nessus_high_risk.txt','w+')
     @medium_report_file = File.new(@base_dir + '/' + @options.report_file + '_nessus_medium_risk.txt','w+')
     @low_report_file = File.new(@base_dir + '/' + @options.report_file + '_nessus_low_risk.txt','w+')
+    @info_report_file = File.new(@base_dir + '/' + @options.report_file + '_nessus_informational.txt','w+')
     @host_report_file = File.new(@base_dir + '/' + @options.report_file + '_nessus_hosts.txt','w+')
     @web_server_report_file = File.new(@base_dir + '/' + @options.report_file + '_web_servers.txt','w+')
 
@@ -589,6 +590,17 @@ class NessusautoAnalyzer
       @low_report_file.puts "Affected Hosts : " + results['affected_hosts'].uniq.join(', ')
       @low_report_file.puts "Affected Hosts : " + results['affected_fqdns'].uniq.join(', ')
       @low_report_file.puts "\n------------------\n"
+    end
+
+    @info_report_file.puts "Low Risk Issues"
+    @info_report_file.puts "=================\n"
+    @info_vulns.each do |item, results|
+      @info_report_file.puts results['issue']['title']
+      @info_report_file.puts "CVE : " + results['issue']['cve']
+      @info_report_file.puts "Exploitability : " + results['issue']['exploitable']
+      @info_report_file.puts "Affected Hosts : " + results['affected_hosts'].uniq.join(', ')
+      @info_report_file.puts "Affected Hosts : " + results['affected_fqdns'].uniq.join(', ')
+      @info_report_file.puts "\n------------------\n"
     end
     
     @web_server_list.uniq.each do |host|

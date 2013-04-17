@@ -97,6 +97,7 @@ class WebScreenRecon
     @headless = Headless.new
     @headless.start
     Selenium::WebDriver::Firefox.path = '/usr/lib/firefox/firefox'
+    Selenium::WebDriver::Chrome.path = '/opt/google/chrome/google-chrome'
     @driver = Selenium::WebDriver.for :firefox
     Dir.chdir(@options.output_dir)
     @target_addresses.each do |ip|
@@ -112,8 +113,14 @@ class WebScreenRecon
         @log.warn "Whoops didn't work with address " + ip
         #If we timeout close the driver and open a new one
         @driver.quit
+        
+        @driver = Selenium::WebDriver.for :firefox
+      rescue Selenium::WebDriver::Error::WebDriverError
+        @log.warn "darn unstable firefox"
+        @driver.quit
         @driver = Selenium::WebDriver.for :firefox
       end
+
     end
   end
 
