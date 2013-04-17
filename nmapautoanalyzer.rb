@@ -271,14 +271,24 @@ class NmapautoAnalyzer
     @report_file.puts "NMAP Host Analysis"
     @report_file.puts "-------------------"
     @report_file.puts ""
-    @report_file.puts "Host List"
+    @report_file.puts "Active Host List"
     @report_file.puts "---------"
-    @report_file.puts ""
-    ipaddresses = Array.new
-    @parsed_hosts.each_key do |host|
-      ipaddresses << host
+    active_ipaddresses = Array.new
+    inactive_ipaddresses = Array.new
+    @parsed_hosts.each do |entry|
+      host, ports = entry[0], entry[1]
+      if ports.length > 0
+        active_ipaddresses << host
+      else
+        inactive_ipaddresses << host
+      end
     end
-	@report_file.puts ipaddresses.uniq.join(', ')
+	  @report_file.puts active_ipaddresses.uniq.join(', ')
+    @report_file.puts ""
+    @report_file.puts ""
+    @report_file.puts "Inactive Host List"
+    @report_file.puts "---------"
+    @report_file.puts inactive_ipaddresses.uniq.join(', ')
     @report_file.puts ""
     @report_file.puts ""
     #sorted_hosts = @parsed_hosts.sort {|a,b| b[1].length <=> a[1].length}
@@ -318,11 +328,11 @@ class NmapautoAnalyzer
       @report_file.puts "\n\n"
     end
 
-    @report_file.puts "\n\nHosts with Closed Ports"
+    @report_file.puts "\n\nActive Hosts with Closed Ports"
     @report_file.puts "--------------------\n\n"
     @report_file.puts @closed_ports.uniq.join(', ')
     @report_file.puts "--------------------\n\n"
-    ipaddresses.each do |add|
+    active_ipaddresses.each do |add|
       result = "n"
       result = "y" if @closed_ports.include?(add)
       @report_file.puts add + ', ' + result
