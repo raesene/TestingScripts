@@ -1,10 +1,14 @@
 GEM
   remote: http://rubygems.org/
   specs:
+    childprocess (0.3.9)
+      ffi (~> 1.0, >= 1.0.11)
     color (1.4.1)
     domain_name (0.5.10)
       unf (>= 0.0.5, < 1.0.0)
     fastercsv (1.5.5)
+    ffi (1.7.0)
+    headless (1.0.1)
     httparty (0.11.0)
       multi_json (~> 1.0)
       multi_xml (>= 0.5.2)
@@ -36,16 +40,23 @@ GEM
     ruport (1.6.3)
       fastercsv
       pdf-writer (= 1.1.8)
+    selenium-webdriver (2.32.1)
+      childprocess (>= 0.2.5)
+      multi_json (~> 1.0)
+      rubyzip
+      websocket (~> 1.0.4)
     transaction-simple (1.4.0.2)
     unf (0.1.1)
       unf_ext
     unf_ext (0.0.6)
     webrobots (0.1.1)
+    websocket (1.0.7)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
+  headless
   httparty
   ipaddress
   kramdown
@@ -57,3 +68,4 @@ DEPENDENCIES
   rubyXL
   rubyzip
   ruport
+  selenium-webdriver

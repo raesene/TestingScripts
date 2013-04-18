@@ -41,17 +41,15 @@ class NmapautoAnalyzer
   VERSION = '0.2.4'
   attr_accessor :valid_entries, :scan_files, :parsed_hosts, :scanned_files, :options
 
-  def initialize(arguments)
+  def initialize(commandlineopts)
+
+    @options = commandlineopts
     
     require 'rubygems'
     require 'logger'
-    require 'optparse'
-    require 'ostruct'
-
-    if arguments.length > 0
-      arguments_flag = :true
-    end
     
+    
+  
     #this is needed to tack on to file checks in 1.9.2 as the current directory is no longer on the lib path
     script_dir = File.expand_path( File.dirname(__FILE__) )
 
@@ -68,64 +66,10 @@ class NmapautoAnalyzer
     end
     
    
-    @options = OpenStruct.new
+    
 
-    @options.report_directory = Dir.pwd
-    @options.report_file = 'nmap-parse-report'
-    @options.scan_directory = '/tmp/nmapscans/'
-    @options.scan_file = ''
-    @options.scan_type = :notset
-    @options.html_report = false
-    @options.ignore_chatty = false
 
-    opts = OptionParser.new do |opts|
-      opts.banner = "Nmap Auto Analyzer #{VERSION}"
-      
-      opts.on("-d", "--directory [DIRECTORY]", "Directory to scan for xml files") do |dir|
-        @options.scan_directory = dir
-        @options.scan_type = :directory
-      end
 
-      opts.on("-f", "--file [FILE]", "File to scan including path") do |file|
-        @options.scan_file = file
-        @options.scan_type = :file
-      end
-      
-      opts.on("-r", "--report [REPORT]", "Report name") do |rep|
-        @options.report_file = rep
-      end
-
-      opts.on("--reportDirectory [REPORTDIRECTORY]", "Report Directory") do |rep|
-        @options.report_directory = rep
-      end
-
-      opts.on("--html-report", "Generate an HTML report as well as the txt one") do |html|
-        @options.html_report = true
-      end
-
-      opts.on("-i", "--ignoreChatty", "Ignore Chatty Hosts (over 900 open tcp ports") do |ignore|
-        @options.ignore_chatty = true
-      end
-
-      opts.on("-h", "--help", "-?", "--?", "Get Help") do |help|
-        puts opts
-        exit
-      end
-      
-      opts.on("-v", "--version", "get Version") do |ver|
-        puts "Nmapauto Analyzer Version #{VERSION}"
-        exit
-      end
-    end
-
-    opts.parse!(arguments)
-
-    #Catch cases where we don't get required information
-    unless arguments_flag && (@options.scan_type == :file || @options.scan_type == :directory)
-      puts "didn't get any arguments or invalid scantype"
-      puts opts
-      exit
-    end
     
     @base_dir = @options.report_directory
     @scan_dir = @options.scan_directory
@@ -411,6 +355,68 @@ class NmapautoAnalyzer
 end
 
 if __FILE__ == $0
-  analysis = NmapautoAnalyzer.new(ARGV)
+  require 'ostruct'
+  require 'optparse'
+  @options = OpenStruct.new
+
+  @options.report_directory = Dir.pwd
+  @options.report_file = 'nmap-parse-report'
+  @options.scan_directory = '/tmp/nmapscans/'
+  @options.scan_file = ''
+  @options.scan_type = :notset
+  @options.html_report = false
+  @options.ignore_chatty = false
+
+  opts = OptionParser.new do |opts|
+    opts.banner = "Nmap Auto Analyzer #{NmapautoAnalyzer::VERSION}"
+      
+    opts.on("-d", "--directory [DIRECTORY]", "Directory to scan for xml files") do |dir|
+      @options.scan_directory = dir
+      @options.scan_type = :directory
+    end
+    opts.on("-f", "--file [FILE]", "File to scan including path") do |file|
+      @options.scan_file = file
+      @options.scan_type = :file
+    end
+      
+    opts.on("-r", "--report [REPORT]", "Report name") do |rep|
+      @options.report_file = rep
+    end
+
+    opts.on("--reportDirectory [REPORTDIRECTORY]", "Report Directory") do |rep|
+      @options.report_directory = rep
+    end
+
+    opts.on("--html-report", "Generate an HTML report as well as the txt one") do |html|
+      @options.html_report = true
+    end
+
+    opts.on("-i", "--ignoreChatty", "Ignore Chatty Hosts (over 900 open tcp ports)") do |ignore|
+      @options.ignore_chatty = true
+    end
+
+    opts.on("-h", "--help", "-?", "--?", "Get Help") do |help|
+      puts opts
+      exit
+    end
+      
+    opts.on("-v", "--version", "get Version") do |ver|
+      puts "Nmapauto Analyzer Version #{NmapautoAnalyzer::VERSION}"
+      exit
+    end
+  end
+
+  opts.parse!(ARGV)
+
+  unless (@options.scan_type == :file || @options.scan_type == :directory)
+    puts "didn't get any arguments or invalid scantype"
+    puts opts
+    exit
+  end
+
+
+
+
+  analysis = NmapautoAnalyzer.new(@options)
   analysis.run
 end
