@@ -572,39 +572,39 @@ end
 if __FILE__ == $0
   require 'ostruct'
   require 'optparse'
-  @options = OpenStruct.new
+  options = OpenStruct.new
   
   #Set some defaults in the options hash
-  @options.report_directory = Dir.pwd
-  @options.report_file = 'nessus-parse-report'
-  @options.scan_directory = Dir.pwd
-  @options.scan_file = ''
-  @options.scan_type = :notset
+  options.report_directory = Dir.pwd
+  options.report_file = 'nessus-parse-report'
+  options.scan_directory = Dir.pwd
+  options.scan_file = ''
+  options.scan_type = :notset
   
   
   opts = OptionParser.new do |opts|
     opts.banner = "Nessus Auto analyzer #{NessusautoAnalyzer::VERSION}"
     
     opts.on("-d", "--directory [DIRECTORY]", "Directory to scan for .nessus files") do |dir|
-      @options.scan_directory = dir
-      @options.scan_type = :directory
+      options.scan_directory = dir
+      options.scan_type = :directory
     end 
     
     opts.on("-f", "--file [FILE]", "File to analyze including path") do |file|
-      @options.scan_file = file
-      @options.scan_type = :file
+      options.scan_file = file
+      options.scan_type = :file
     end
     
     opts.on("-r", "--report [REPORT]", "Base Report Name") do |rep|
-      @options.report_file = rep
+      options.report_file = rep
     end
     
     opts.on("--reportDirectory [REPORTDIRECTORY]", "Directory to output reports to") do |repdir|
-      @options.report_directory = repdir
+      options.report_directory = repdir
     end
 
     opts.on("-l", "--log [LOGGER]", "Log debugging messages to a file") do |logger|
-      @options.logger = logger
+      options.logger = logger
     end
     
     opts.on("-h", "--help", "-?", "--?", "Get Help") do |help|
@@ -622,13 +622,13 @@ if __FILE__ == $0
   opts.parse!(ARGV)
     
     #Check for missing required options
-    unless (@options.scan_type == :file || @options.scan_type == :directory)
+    unless (options.scan_type == :file || options.scan_type == :directory)
       puts "didn't get any arguments or missing scan type"
       puts opts
       exit
     end
 
-  analysis = NessusautoAnalyzer.new(@options)
+  analysis = NessusautoAnalyzer.new(options)
   analysis.run
 end
 

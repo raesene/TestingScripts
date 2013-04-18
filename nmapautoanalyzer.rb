@@ -357,42 +357,42 @@ end
 if __FILE__ == $0
   require 'ostruct'
   require 'optparse'
-  @options = OpenStruct.new
+  options = OpenStruct.new
 
-  @options.report_directory = Dir.pwd
-  @options.report_file = 'nmap-parse-report'
-  @options.scan_directory = '/tmp/nmapscans/'
-  @options.scan_file = ''
-  @options.scan_type = :notset
-  @options.html_report = false
-  @options.ignore_chatty = false
+  options.report_directory = Dir.pwd
+  options.report_file = 'nmap-parse-report'
+  options.scan_directory = '/tmp/nmapscans/'
+  options.scan_file = ''
+  options.scan_type = :notset
+  options.html_report = false
+  options.ignore_chatty = false
 
   opts = OptionParser.new do |opts|
     opts.banner = "Nmap Auto Analyzer #{NmapautoAnalyzer::VERSION}"
       
     opts.on("-d", "--directory [DIRECTORY]", "Directory to scan for xml files") do |dir|
-      @options.scan_directory = dir
-      @options.scan_type = :directory
+      options.scan_directory = dir
+      options.scan_type = :directory
     end
     opts.on("-f", "--file [FILE]", "File to scan including path") do |file|
-      @options.scan_file = file
-      @options.scan_type = :file
+      options.scan_file = file
+      options.scan_type = :file
     end
       
     opts.on("-r", "--report [REPORT]", "Report name") do |rep|
-      @options.report_file = rep
+      options.report_file = rep
     end
 
     opts.on("--reportDirectory [REPORTDIRECTORY]", "Report Directory") do |rep|
-      @options.report_directory = rep
+      options.report_directory = rep
     end
 
     opts.on("--html-report", "Generate an HTML report as well as the txt one") do |html|
-      @options.html_report = true
+      options.html_report = true
     end
 
     opts.on("-i", "--ignoreChatty", "Ignore Chatty Hosts (over 900 open tcp ports)") do |ignore|
-      @options.ignore_chatty = true
+      options.ignore_chatty = true
     end
 
     opts.on("-h", "--help", "-?", "--?", "Get Help") do |help|
@@ -408,7 +408,7 @@ if __FILE__ == $0
 
   opts.parse!(ARGV)
 
-  unless (@options.scan_type == :file || @options.scan_type == :directory)
+  unless (options.scan_type == :file || options.scan_type == :directory)
     puts "didn't get any arguments or invalid scantype"
     puts opts
     exit
@@ -417,6 +417,6 @@ if __FILE__ == $0
 
 
 
-  analysis = NmapautoAnalyzer.new(@options)
+  analysis = NmapautoAnalyzer.new(options)
   analysis.run
 end
