@@ -47,15 +47,15 @@ class NessusautoAnalyzer
   attr_accessor :parsed_hosts, :low_vulns, :medium_vulns, :high_vulns, :info_vulns, :exploitable_vulns
 
   # Parse the arguments passed ans setup the options for scanning
-  def initialize(arguments)
+  def initialize(commandlineopts)
     
     #Requiring things we need.  Most of these are in stdlib, but nokogiri ain't
     begin
       require 'rubygems'
       require 'logger'
-      require 'optparse'
+      
       require 'nokogiri'
-      require 'ostruct'
+
     rescue LoadError => e
       puts "Couldn't load one of the required gems (likely to be nokogiri)"
       puts "The error message may be useful"
@@ -63,66 +63,7 @@ class NessusautoAnalyzer
       exit
     end
     
-    #Need to set this prior to running optparse as arguments.length doesn't work afterwards
-    if arguments.length > 0
-      arguments_flag = true
-    end
-
-    @options = OpenStruct.new
-    
-    #Set some defaults in the options hash
-    @options.report_directory = Dir.pwd
-    @options.report_file = 'nessus-parse-report'
-    @options.scan_directory = Dir.pwd
-    @options.scan_file = ''
-    @options.scan_type = :notset
-    
-    
-    opts = OptionParser.new do |opts|
-      opts.banner = "Nessus Auto analyzer #{VERSION}"
-      
-      opts.on("-d", "--directory [DIRECTORY]", "Directory to scan for .nessus files") do |dir|
-        @options.scan_directory = dir
-        @options.scan_type = :directory
-      end 
-      
-      opts.on("-f", "--file [FILE]", "File to analyze including path") do |file|
-        @options.scan_file = file
-        @options.scan_type = :file
-      end
-      
-      opts.on("-r", "--report [REPORT]", "Base Report Name") do |rep|
-        @options.report_file = rep
-      end
-      
-      opts.on("--reportDirectory [REPORTDIRECTORY]", "Directory to output reports to") do |repdir|
-        @options.report_directory = repdir
-      end
-
-      opts.on("-l", "--log [LOGGER]", "Log debugging messages to a file") do |logger|
-        @options.logger = logger
-      end
-      
-      opts.on("-h", "--help", "-?", "--?", "Get Help") do |help|
-        puts opts
-        exit
-      end
-      
-      opts.on("-v", "--version", "Get Version") do |ver|
-        puts "Nessus Analyzer Version #{VERSION}"
-        exit
-      end
-      
-    end
-    
-    opts.parse!(arguments)
-    
-    #Check for missing required options
-    unless arguments_flag && (@options.scan_type == :file || @options.scan_type == :directory)
-      puts "didn't get any arguments or missing scan type"
-      puts opts
-      exit
-    end
+    @options = commandlineopts
     
     @base_dir = @options.report_directory
     @scan_dir = @options.scan_directory
@@ -629,7 +570,65 @@ class NessusautoAnalyzer
 end
 
 if __FILE__ == $0
-  analysis = NessusautoAnalyzer.new(ARGV)
+  require 'ostruct'
+  require 'optparse'
+  @options = OpenStruct.new
+  
+  #Set some defaults in the options hash
+  @options.report_directory = Dir.pwd
+  @options.report_file = 'nessus-parse-report'
+  @options.scan_directory = Dir.pwd
+  @options.scan_file = ''
+  @options.scan_type = :notset
+  
+  
+  opts = OptionParser.new do |opts|
+    opts.banner = "Nessus Auto analyzer #{NessusautoAnalyzer::VERSION}"
+    
+    opts.on("-d", "--directory [DIRECTORY]", "Directory to scan for .nessus files") do |dir|
+      @options.scan_directory = dir
+      @options.scan_type = :directory
+    end 
+    
+    opts.on("-f", "--file [FILE]", "File to analyze including path") do |file|
+      @options.scan_file = file
+      @options.scan_type = :file
+    end
+    
+    opts.on("-r", "--report [REPORT]", "Base Report Name") do |rep|
+      @options.report_file = rep
+    end
+    
+    opts.on("--reportDirectory [REPORTDIRECTORY]", "Directory to output reports to") do |repdir|
+      @options.report_directory = repdir
+    end
+
+    opts.on("-l", "--log [LOGGER]", "Log debugging messages to a file") do |logger|
+      @options.logger = logger
+    end
+    
+    opts.on("-h", "--help", "-?", "--?", "Get Help") do |help|
+      puts opts
+      exit
+    end
+    
+    opts.on("-v", "--version", "Get Version") do |ver|
+      puts "Nessus Analyzer Version #{NessusautoAnalyzer::VERSION}"
+      exit
+    end
+    
+  end
+  
+  opts.parse!(ARGV)
+    
+    #Check for missing required options
+    unless (@options.scan_type == :file || @options.scan_type == :directory)
+      puts "didn't get any arguments or missing scan type"
+      puts opts
+      exit
+    end
+
+  analysis = NessusautoAnalyzer.new(@options)
   analysis.run
 end
 
