@@ -20,6 +20,8 @@
   #   -h, --help          	Displays help message
   #   -v, --version       	Display the version, then exit
   #   -m, --mode       		One of two modes to run the script in 'directory','file'
+  #   -i, ignoreChatty      Bypasses hosts with more than 900 open TCP ports.  Reason for this switches existance is that some hosts (e.g. Proxy servers)
+  #                         will show all ports as open, which makes quite a mess of the output.
   #   -d <dir>, --directory <dir>  Only needed in directory mode name of the directory to scan
   #   -f <file>, --file <file>     Only needed in file mode, name of the file to parse
   #   -r <file>, --report <file>        Name of file for reporting
