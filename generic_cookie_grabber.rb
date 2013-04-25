@@ -49,29 +49,35 @@ for i in 1..500
 
   login_form2 = page2.forms[0]
 
+  #Here's our sample password
   password = ['b','s','i','d','e','s']
 
+  #Here for our example we can work out what characters to enter
+  #based on the numbers from the label elements
   c1 = page2.labels[0].to_s[/\d/]
   c2 = page2.labels[1].to_s[/\d/]
   c3 = page2.labels[2].to_s[/\d/]
 
+  #snippet to remove one from each element to match up with the array numbering 
   c1 = c1.to_i - 1
   c2 = c2.to_i - 1
   c3 = c3.to_i - 1
 
-  
+  #Fill in the elements of the password form with our characters
   login_form2.field('char1').value = password[c1]
   login_form2.field('char2').value = password[c2]
   login_form2.field('char3').value = password[c3]
 
   page3 = login_form2.click_button
 
+  #Example of looking for a token in the body of the response
   if page3.body[/[a-z]{50}/]
     output_file.puts page3.body[/[a-z]{50}/]
   else
     puts "didn't get a token"
   end
 
+#Example of getting the value from a cookie on the page
   agent.cookies.each do |cookie|
     if cookie.name =~ /<cookie_We_want>/
       output_file.puts cookie.value
