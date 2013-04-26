@@ -23,7 +23,7 @@
 #
 # == Author
 # Author::  Rory McCune
-# Copyright:: Copyright (c) 2012 Rory Mccune
+# Copyright:: Copyright (c) 2013 Rory Mccune
 # License:: GPLv3
 #
 # == Options
