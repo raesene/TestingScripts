@@ -160,6 +160,7 @@ class NmapautoAnalyzer
     @ports = Array.new
     #port_hash is a hash to contain a list of ports and what hosts have them open
     @port_hash = Hash.new
+    @traceroute_hash = Hash.new
     @scan_files.each do |file|
       begin
         parser = Nmap::Parser.parsefile(file)
@@ -199,6 +200,16 @@ class NmapautoAnalyzer
           @parsed_hosts[host.addr][port.num.to_s + ' - TCP'][:reason] = port.reason if port.reason
           @parsed_hosts[host.addr][port.num.to_s + ' - TCP'][:product] = port.service.product if port.service.product
         end
+
+        if host.traceroute
+          unless host.traceroute.hops[-1].addr == host.addr
+            last_hop = host.traceroute.hops[-1].addr.to_s
+          else
+            last_hop = host.traceroute.hops[-2].addr.to_s
+          end
+          @traceroute_hash[host.addr] = last_hop
+        end
+
         host.udp_ports("open") do |port|
           next if port.reason == "no-response"
           #Add the port to the ports array
@@ -250,6 +261,14 @@ class NmapautoAnalyzer
     @report_file.puts "Inactive Host List"
     @report_file.puts "---------"
     @report_file.puts inactive_ipaddresses.uniq.join(', ')
+    @report_file.puts ""
+    @report_file.puts ""
+    @report_file.puts "Traceroute Information"
+    @report_file.puts "---------"
+    @report_file.puts "Target Address, Last Hop"
+    @traceroute_hash.each do |addr, last_hop|
+      @report_file.puts addr + ", " + last_hop
+    end
     @report_file.puts ""
     @report_file.puts ""
     #sorted_hosts = @parsed_hosts.sort {|a,b| b[1].length <=> a[1].length}
