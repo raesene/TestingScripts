@@ -162,6 +162,7 @@ class NmapautoAnalyzer
     @port_hash = Hash.new
     @traceroute_hash = Hash.new
     @os_hash = Hash.new
+    @web_headers_hash = Hash.new
     @scan_files.each do |file|
       begin
         parser = Nmap::Parser.parsefile(file)
@@ -186,21 +187,7 @@ class NmapautoAnalyzer
             @closed_ports << host.addr
           end
         end
-        host.tcp_ports("open") do |port|
-          #Add the port to the ports array
-          @ports << port.num.to_s
-          #Add the port to the port hash
-          if @port_hash[port.num.to_s + '-TCP']
-            @port_hash[port.num.to_s + '-TCP'] << host.addr
-          else
-            @port_hash[port.num.to_s + '-TCP'] = Array.new
-            @port_hash[port.num.to_s + '-TCP'] << host.addr
-          end
-          @parsed_hosts[host.addr][port.num.to_s + ' - TCP'] = Hash.new 
-          @parsed_hosts[host.addr][port.num.to_s + ' - TCP'][:service] = port.service.name if port.service.name
-          @parsed_hosts[host.addr][port.num.to_s + ' - TCP'][:reason] = port.reason if port.reason
-          @parsed_hosts[host.addr][port.num.to_s + ' - TCP'][:product] = port.service.product if port.service.product
-        end
+
         #Add Traceroute information and grab the last hop before the host
         #It's either the last hop or the one before it 
         if host.traceroute
@@ -216,6 +203,27 @@ class NmapautoAnalyzer
         if host.os
           @os_hash[host.addr] = host.os.name + ', ' + host.os.name_accuracy.to_s
         end
+
+
+        host.tcp_ports("open") do |port|
+          #Add the port to the ports array
+          @ports << port.num.to_s
+          #Add the port to the port hash
+          if @port_hash[port.num.to_s + '-TCP']
+            @port_hash[port.num.to_s + '-TCP'] << host.addr
+          else
+            @port_hash[port.num.to_s + '-TCP'] = Array.new
+            @port_hash[port.num.to_s + '-TCP'] << host.addr
+          end
+          @parsed_hosts[host.addr][port.num.to_s + ' - TCP'] = Hash.new 
+          @parsed_hosts[host.addr][port.num.to_s + ' - TCP'][:service] = port.service.name if port.service.name
+          @parsed_hosts[host.addr][port.num.to_s + ' - TCP'][:reason] = port.reason if port.reason
+          @parsed_hosts[host.addr][port.num.to_s + ' - TCP'][:product] = port.service.product if port.service.product
+          if host.tcp_script(port.num.to_s, 'http-methods')
+            @web_headers_hash[host.addr + ':' + port.num.to_s] = host.tcp_script(port.num.to_s, 'http-methods').output.split("\n")[0]
+          end
+        end
+        
 
 
         host.udp_ports("open") do |port|
@@ -291,6 +299,18 @@ class NmapautoAnalyzer
       @report_file.puts ""
       @report_file.puts ""
     end
+
+    if @web_headers_hash.length > 0
+      @report_file.puts "Operating System Information"
+      @report_file.puts "---------"
+      @report_file.puts "Target Web Server, Supported Methods"
+      @web_headers_hash.each do |addr, methods|
+        @report_file.puts addr + ", " + methods
+      end
+      @report_file.puts ""
+      @report_file.puts ""
+    end
+
     #sorted_hosts = @parsed_hosts.sort {|a,b| b[1].length <=> a[1].length}
     sorted_hosts = @parsed_hosts.sort_by {|address,find| address.split('.').map{ |digits| digits.to_i}}
 
