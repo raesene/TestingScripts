@@ -200,7 +200,7 @@ class NmapautoAnalyzer
         end
 
         #Add OS guess information
-        if host.os
+        if host.os.name
           @os_hash[host.addr] = host.os.name + ', ' + host.os.name_accuracy.to_s
         end
 
