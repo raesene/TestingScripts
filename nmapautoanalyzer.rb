@@ -189,16 +189,18 @@ class NmapautoAnalyzer
         end
 
         #Add Traceroute information and grab the last hop before the host
-        #It's either the last hop or the one before it 
-        if host.traceroute
-          @log.debug("host address is " + host.addr +  "Last traceroute is" + host.traceroute.hops[-1].addr)
-          if host.traceroute.hops[-1].addr != host.addr || host.traceroute.hops.length == 1
-            last_hop = host.traceroute.hops[-1].addr.to_s
-          else
-            last_hop = host.traceroute.hops[-2].addr.to_s
-          end
-          @traceroute_hash[host.addr] = last_hop
-        end
+        #It's either the last hop or the one before it
+        #So it looks to me that nmaps traceroute isn't quite right for this
+        #produces different results to traceroute...
+        #if host.traceroute
+        #  @log.debug("host address is " + host.addr +  "Last traceroute is" + host.traceroute.hops[-1].addr)
+        #  if host.traceroute.hops[-1].addr != host.addr || host.traceroute.hops.length == 1
+        #    last_hop = host.traceroute.hops[-1].addr.to_s
+        #  else
+        #    last_hop = host.traceroute.hops[-2].addr.to_s
+        #  end
+        #  @traceroute_hash[host.addr] = last_hop
+        #end
 
         #Add OS guess information
         if host.os.name
