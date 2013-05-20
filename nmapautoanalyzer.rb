@@ -191,7 +191,7 @@ class NmapautoAnalyzer
         #Add Traceroute information and grab the last hop before the host
         #It's either the last hop or the one before it 
         if host.traceroute
-          @log.debug("host address is " + host.addr, "Last traceroute is" + host.traceroute.hops[-1].addr)
+          @log.debug("host address is " + host.addr +  "Last traceroute is" + host.traceroute.hops[-1].addr)
           if host.traceroute.hops[-1].addr != host.addr || host.traceroute.hops.length == 1
             last_hop = host.traceroute.hops[-1].addr.to_s
           else
