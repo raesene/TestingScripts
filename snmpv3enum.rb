@@ -77,7 +77,7 @@ def initialize(arguments)
     end
   
     opts.on("-h", "--help", "-?", "--?", "Get Help") do |help|
-      puts options
+      puts opts
       exit
     end
       
