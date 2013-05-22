@@ -77,7 +77,8 @@ def initialize(arguments)
     end
   
     opts.on("-h", "--help", "-?", "--?", "Get Help") do |help|
-      RDoc::usage()
+      puts options
+      exit
     end
       
     opts.on("-v", "--version", "get Version") do |ver|
