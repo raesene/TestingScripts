@@ -58,6 +58,7 @@ class IcmpRecon
     begin
       require 'nmap/parser'
       require 'ipaddress'
+      require 'logger'
     rescue LoadError
       puts "icmp_recon requires two gems to run"
       puts "install nmap-parser and ipaddress and try again"
@@ -137,7 +138,12 @@ class IcmpRecon
       exit
     end
 
+
+    @log = Logger.new('icmp-recon-analyzer-log')
+    @log.level = Logger::DEBUG
+
     unless Process.uid == 0 || @options.bypass_root_check
+      @log.debug('errored on root check')
       puts "You need root permissions to run this properly"
       puts "Either run this script as root or use the sudo option (-s)"
       puts "or if your sure it's ok, use the -b option to bypass this check"
@@ -145,6 +151,7 @@ class IcmpRecon
     end
 
     unless @options.rtf_report || @options.csv_report || @options.html_report
+      @log.debug('errored on reporting check')
       puts "No reporting specified"
       puts " you need to use one or more of --csvReport, --rtfReport or --htmlReport"
       exit
@@ -164,6 +171,7 @@ class IcmpRecon
       @ip_address_ranges.each {|line| line.chomp!}
       #Getting rid of anything that's obviously not an IP address, really it should be 7 I think (4 digits and 3 .'s)
       @ip_address_ranges.delete_if {|ip| ip.length < 4}
+      @log.debug("there are #{@ip_address_ranges.length} ranges to scan")
 
     end
 
@@ -216,8 +224,11 @@ class IcmpRecon
       next unless raw_range
       begin
         range = IPAddress.parse(raw_range)
-      rescue ArgumentError
+      rescue ArgumentError => e
+        @log.debug('had a problem trying to parse' + raw_range)
+        @log.debug('the problem was ' + e)
         puts 'not so good al'
+        puts e
         next
       end
       range.each do |address|
