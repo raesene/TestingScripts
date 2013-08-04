@@ -224,9 +224,9 @@ class IcmpRecon
       next unless raw_range
       begin
         range = IPAddress.parse(raw_range)
-      rescue ArgumentError => e
+      rescue ArgumentError => e.to_s
         @log.debug('had a problem trying to parse' + raw_range)
-        @log.debug('the problem was ' + e)
+        @log.debug('the problem was ' + e.to_s)
         puts 'not so good al'
         puts e
         next
