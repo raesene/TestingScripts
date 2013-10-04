@@ -104,8 +104,8 @@ class HTTPScan
     header_report_file = File.new(report_file_base + '.txt' , 'a+')
     header_report_file.puts "Header Report"
     header_report_file.puts "-------------\n"
-
-    @headers.each do |host, headers|
+    sorted_headers = @headers.sort_by {|address,find| address.split('.').map{ |digits| digits.to_i}}
+    sorted_headers.each do |host, headers|
       header_report_file.puts host
       header_report_file.puts "----------------"
       headers.each do |key,val|
@@ -131,10 +131,14 @@ class HTTPScan
     document = RTF::Document.new(RTF::Font.new(RTF::Font::ROMAN, 'Arial'))
     document.paragraph << "Web Server Headers"
     methods = Hash.new
-    @headers.each do |host, headers|
+    servers = Hash.new
+    sorted_headers = @headers.sort_by {|address,find| address.split('.').map{ |digits| digits.to_i}}
+    sorted_headers.each do |host, headers|
       headers.each do |key, val|
         if key.downcase == 'allow'
           methods[host] = val
+        elsif key.downcase == 'server'
+          servers[host] = val
         end
       end
     end
@@ -144,7 +148,8 @@ class HTTPScan
     header_table[0][0] << 'IP Address'
     header_table[0][1] << "Web Server Headers"
     row = 1
-    @headers.each do |host, headers|
+    sorted_headers = @headers.sort_by {|address,find| address.split('.').map{ |digits| digits.to_i}}
+    sorted_headers.each do |host, headers|
       header_table[row][0] << host
       headers.each do |key,val|
         header_table[row][1] << key + ' : ' + val
@@ -164,6 +169,18 @@ class HTTPScan
       methods_table[mrow][0] << host
       methods_table[mrow][1] << methods
       mrow = mrow + 1
+    end
+
+    document.paragraph << "Web Server Software"
+    servers_table = document.table(servers.length + 1,2,3000,5000)
+    servers_table.border_width = 5
+    servers_table[0][0] << 'IP Address'
+    servers_table[0][1] << 'server header'
+    srow = 1
+    servers.each do |host, server|
+      servers_table[srow][0] << host
+      servers_table[srow][1] << server
+      srow = srow + 1
     end
 
     rtf_report_file = File.open(report_file_base + '.rtf', 'a+') do |file|
