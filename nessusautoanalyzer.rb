@@ -582,7 +582,7 @@ class NessusautoAnalyzer
       
       exploit.each do |id, issue|
         @exploitable_report_file.puts "\n--------------------"
-        @exploitable_report_file.puts "exploit ID : #{id}"
+        @exploitable_report_file.puts "exploit ID : #{id.split('-')[0]}"
         @exploitable_report_file.puts "Issue Name : #{issue['title']}"
         @exploitable_report_file.puts "Issue Port : #{issue['port']}"
       end
