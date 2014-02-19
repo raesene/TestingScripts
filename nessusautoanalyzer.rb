@@ -183,10 +183,17 @@ class NessusautoAnalyzer
         #There's some issues we're not interested in at the moment
         #Which can be identified by having no data
         next unless item.children
-        #Use the pluginID as a unique key for storing vuln.
-        item_id = item['pluginID']
+        #Use the pluginID and port as a unique key for storing vuln.
+        @log.debug(ip_address + ' - ' + item['port'])
+        item_id = item['pluginID'] + '-' + item['port']
         issue = Hash.new
-        issue['risk_factor'] = item.xpath('risk_factor').text
+        #Change Risk Factor None to Information
+        if item.xpath('risk_factor').text == 'None'
+          riskf = 'Information'
+        else
+          riskf = item.xpath('risk_factor').text
+        end
+        issue['risk_factor'] = riskf
         issue['description'] = item.xpath('description').text
         issue['port'] = item['port'] + '/' + item['protocol']
         issue['title'] = item['pluginName']
@@ -194,6 +201,8 @@ class NessusautoAnalyzer
         issue['plugin_output'] = item.xpath('plugin_output').text
         issue['cvss_score'] = item.xpath('cvss_base_score').text
         issue['cvss_vector'] = item.xpath('cvss_vector').text
+        issue['service'] = item['svc_name']
+        issue['solution'] = item.xpath('solution').text
 
         #Create an array and shove the cve texts in there as it makes it easy to concat them afterwards
         cve_array = Array.new
@@ -380,7 +389,7 @@ class NessusautoAnalyzer
       end
       host_sheet.add_cell(row_count, 1, ms_array.join(', '))
       row_count = row_count + 1
-      puts "row Count #{row_count}"
+      puts "."
     end
 
     puts "About to write MS vulns"
@@ -424,54 +433,129 @@ class NessusautoAnalyzer
     vulnerability_details_sheet.add_cell(6,1, "Host")
     #maps to host['fqdn']
     vulnerability_details_sheet.add_cell(6,2, "Hostname")
-    #Hmm this one will be harder to populate
-    vulnerability_details_sheet.add_cell(6,3,"NetBIOS")
     #maps to host['os']
-    vulnerability_details_sheet.add_cell(6,4, "Platform")
+    vulnerability_details_sheet.add_cell(6,3, "Platform")
     #maps to host[issue]
-    vulnerability_details_sheet.add_cell(6,5, "Vulnerability Checks")
+    vulnerability_details_sheet.add_cell(6,4, "Vulnerability ID")
     #maps to host[issue]['title']
-    vulnerability_details_sheet.add_cell(6,6, "Name")
+    vulnerability_details_sheet.add_cell(6,5, "Name")
     #maps to host[issue]['port']
-    vulnerability_details_sheet.add_cell(6,7, "Port/Protocol")
-    #TODO
-    #vulnerability_details_sheet.add_cell(6,8, "service")
-    #TODO
-    #vulnerability_details_sheet.add_cell(6,9, "Type")
+    vulnerability_details_sheet.add_cell(6,6, "Port/Protocol")
+    #maps to host[issue]['service']
+    vulnerability_details_sheet.add_cell(6,7, "service")
+    #Depends on Severity if 0 it's information otherwise it's a vuln.
+    vulnerability_details_sheet.add_cell(6,8, "Type")
     #maps to host[issue]['cvss_score']
-    vulnerability_details_sheet.add_cell(6,10, "CVSS Score")
+    vulnerability_details_sheet.add_cell(6,9, "CVSS Score")
     #maps to host[issue]['cvss_vector']
-    vulnerability_details_sheet.add_cell(6,11, "CVSS vector")
+    vulnerability_details_sheet.add_cell(6,10, "CVSS vector")
     #maps to host[issue]['description']
-    vulnerability_details_sheet.add_cell(6,12, "Description")
-    #maps to host[issue]['plugin_output']
-    vulnerability_details_sheet.add_cell(6,13, "Information")
-    #TODO
-    #vulnerability_details_sheet.add_cell(6,14, "Solution")
+    vulnerability_details_sheet.add_cell(6,11, "Description")
+    #maps to host[issue]['solution']
+    vulnerability_details_sheet.add_cell(6,12, "Solution")
+    #Don't think this is available leave here to see what we can do
+    vulnerability_details_sheet.add_cell(6,13, "References")
+    #maps to host[issue]['cve']
+    vulnerability_details_sheet.add_cell(6,14, "CVE")
+
+
+
+    host_list_summary_sheet.add_cell(6,0,"Host")
+    host_list_summary_sheet.add_cell(6,1,"Name")
+    host_list_summary_sheet.add_cell(6,2,"Platform")
+    host_list_summary_sheet.add_cell(6,3,"Critical Risk")
+    host_list_summary_sheet.add_cell(6,4,"High Risk")
+    host_list_summary_sheet.add_cell(6,5,"Medium Risk")
+    host_list_summary_sheet.add_cell(6,6,"Low Risk")
+    host_list_summary_sheet.add_cell(6,7,"Information")
+    host_list_summary_sheet.add_cell(6,8,"Ports")
+
+    open_ports_list_sheet.add_cell(6,0,"Host")
+    open_ports_list_sheet.add_cell(6,1,"Start Date/Time")
+    open_ports_list_sheet.add_cell(6,2,"Name")
+    open_ports_list_sheet.add_cell(6,3,"Port")
+
 
     row_count = 7
+    host_row_count = 7
+    port_row_count = 7
     @parsed_hosts.each do |address, information|
       fqdn = information.delete('fqdn')
       os = information.delete('os')
+
+      host_list_summary_sheet.add_cell(host_row_count, 0, address)
+      host_list_summary_sheet.add_cell(host_row_count, 1, fqdn)
+      host_list_summary_sheet.add_cell(host_row_count, 2, os)
+      host_crit_vulns = 0
+      host_high_vulns = 0
+      host_med_vulns = 0
+      host_low_vulns = 0
+      host_info_vulns = 0
+      host_open_ports = []
+
+
+
+      port_list = []
+
+
       information.each do |item, issue|
         vulnerability_details_sheet.add_cell(row_count, 0, issue['risk_factor'])
         vulnerability_details_sheet.add_cell(row_count, 1, address)
         vulnerability_details_sheet.add_cell(row_count, 2, fqdn)
-        vulnerability_details_sheet.add_cell(row_count, 3, " ")
-        vulnerability_details_sheet.add_cell(row_count, 4, os)
-        vulnerability_details_sheet.add_cell(row_count, 5, item)
-        vulnerability_details_sheet.add_cell(row_count, 6, issue['title'])
-        vulnerability_details_sheet.add_cell(row_count, 7, issue['port'])
-        vulnerability_details_sheet.add_cell(row_count, 8, " ")
-        vulnerability_details_sheet.add_cell(row_count, 9, " ")
-        vulnerability_details_sheet.add_cell(row_count, 10, issue['cvss_score'])
-        vulnerability_details_sheet.add_cell(row_count, 11, issue['cvss_vector'])
-        vulnerability_details_sheet.add_cell(row_count, 12, issue['description'])
-        vulnerability_details_sheet.add_cell(row_count, 13, issue['plugin_output'])
+        vulnerability_details_sheet.add_cell(row_count, 3, os)
+        #need to split the port back out
+        vulnerability_details_sheet.add_cell(row_count, 4, item.split('-')[0])
+        vulnerability_details_sheet.add_cell(row_count, 5, issue['title'])
+        vulnerability_details_sheet.add_cell(row_count, 6, issue['port'])
+        vulnerability_details_sheet.add_cell(row_count, 7, issue['service'])
+        if issue['severity'] == '0'
+          vulnerability_details_sheet.add_cell(row_count, 8, "Information")
+        else
+          vulnerability_details_sheet.add_cell(row_count, 8, "Vulnerability")
+        end
+        vulnerability_details_sheet.add_cell(row_count, 9, issue['cvss_score'])
+        vulnerability_details_sheet.add_cell(row_count, 10, issue['cvss_vector'])
+        vulnerability_details_sheet.add_cell(row_count, 11, issue['description'])
+        vulnerability_details_sheet.add_cell(row_count, 12, issue['solution'])
+        vulnerability_details_sheet.add_cell(row_count, 13, " ")
+        vulnerability_details_sheet.add_cell(row_count, 14, issue['cve'])
+
+        case issue['severity']
+          when '0'
+            host_info_vulns = host_info_vulns + 1
+          when '1'
+            host_low_vulns = host_low_vulns + 1
+          when '2'
+            host_med_vulns = host_med_vulns + 1
+          when '3'
+            host_high_vulns = host_high_vulns + 1
+          when '4'
+            host_crit_vulns = host_crit_vulns + 1
+        end
+        host_open_ports << issue['port']
+
+
+        port_list << issue['port'] + ' - ' + issue['service']
+
         row_count = row_count + 1
       end
-    end
 
+      port_list.uniq.each do |port|
+        open_ports_list_sheet.add_cell(port_row_count, 0, address)
+        open_ports_list_sheet.add_cell(port_row_count, 1, Date.today)
+        open_ports_list_sheet.add_cell(port_row_count, 2, fqdn)
+        open_ports_list_sheet.add_cell(port_row_count, 3, port)
+        port_row_count = port_row_count + 1
+      end
+
+      host_list_summary_sheet.add_cell(host_row_count, 3, host_crit_vulns)
+      host_list_summary_sheet.add_cell(host_row_count, 4, host_high_vulns)
+      host_list_summary_sheet.add_cell(host_row_count, 5, host_med_vulns)
+      host_list_summary_sheet.add_cell(host_row_count, 6, host_low_vulns)
+      host_list_summary_sheet.add_cell(host_row_count, 7, host_info_vulns)
+      host_list_summary_sheet.add_cell(host_row_count, 8, host_open_ports.uniq.length)
+      host_row_count = host_row_count + 1
+    end
 
 
 
