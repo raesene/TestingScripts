@@ -3,13 +3,13 @@
 require 'httparty'
 require 'json'
 
-output_file = File.new('drupalusers','a+')
 
 if ARGV.length < 1
   puts "format is drupalusers.rb <domain>"
 end
 
 domain = ARGV[0]
+output_file = File.new('drupalusers-' + domain + '.txt','a+')
 url = 'http://' + domain + '/?q=admin/views/ajax/autocomplete/user/'
 all_users = Array.new
 
