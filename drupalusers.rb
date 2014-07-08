@@ -6,6 +6,7 @@ require 'json'
 
 if ARGV.length < 1
   puts "format is drupalusers.rb <domain>"
+  exit
 end
 
 domain = ARGV[0]
