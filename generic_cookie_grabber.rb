@@ -3,7 +3,7 @@
 
 # == Author
 # Author::  Rory McCune
-# Copyright:: Copyright (c) 2013 Rory Mccune
+# Copyright:: Copyright (c) 2014 Rory Mccune
 # License:: GPLv3
 #
 # This program is free software: you can redistribute it and/or modify
