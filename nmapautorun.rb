@@ -42,7 +42,8 @@ class NmapautoRun
   end
 
   def init_scan
-    Nmap::Program.scan do |nmap|
+    nmap = Nmap::Program.find
+    nmap.sudo_task(Nmap::Task.new {|nmap|
       nmap.syn_scan = true
       nmap.service_scan = true
       nmap.default_script = true
@@ -55,11 +56,12 @@ class NmapautoRun
       elsif @input_filename.length > 1
         nmap.target_file = @input_filename
       end
-    end
+    }, {:out => @report_file_base + '_nmap_command_output.txt'})
   end
 
   def full_tcp_scan
-    Nmap::Program.scan do |nmap|
+    nmap = Nmap::Program.find
+    nmap.sudo_task(Nmap::Task.new {|nmap|
       nmap.syn_scan = true
       nmap.verbose = true
       nmap.ports = '1-65535'
@@ -69,11 +71,13 @@ class NmapautoRun
       elsif @input_filename.length > 1
         nmap.target_file = @input_filename
       end
-    end
+    }, {:out => @report_file_base + '_nmap_command_output.txt'})
+    
   end
 
   def full_tcp_scan_noping
-    Nmap::Program.scan do |nmap|
+    nmap = Nmap::Program.find
+    nmap.sudo_task(Nmap::Task.new {|nmap|
       nmap.syn_scan = true
       nmap.verbose = true
       nmap.skip_discovery
@@ -84,12 +88,14 @@ class NmapautoRun
       elsif @input_filename.length > 1
         nmap.target_file = @input_filename
       end
-    end
+    }, {:out => @report_file_base + '_nmap_command_output.txt'})
+    
   end
 
 
   def mod_udp_scan
-    Nmap::Program.scan do |nmap|
+    nmap = Nmap::Program.find
+    nmap.sudo_task(Nmap::Task.new {|nmap|
       nmap.udp_scan = true
       nmap.service_scan = true
       nmap.version_intensity = 0
@@ -101,7 +107,8 @@ class NmapautoRun
       elsif @input_filename.length > 1
         nmap.target_file = @input_filename
       end
-    end
+    }, {:out => @report_file_base + '_nmap_command_output.txt'})
+    
   end
 
 end
@@ -116,6 +123,7 @@ if __FILE__ == $0
   options.input_file = ''
   options.input_range = ''
   options.no_ping = false
+
   #creates a unique base file name in case the user doesn't specify one
   options.report_file_base = 'nmap_auto' + Time.now.gmtime.to_s.gsub(/\W/,'')
 
