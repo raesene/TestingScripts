@@ -316,11 +316,9 @@ class NessusautoAnalyzer
     end
     puts "started the MS Vuln Report"
     workbook = RubyXL::Workbook.new
-    workbook.worksheets << RubyXL::Worksheet.new(workbook, 'MS Patch List by Host')
-    host_sheet = workbook.worksheets[1]
+    host_sheet = workbook.add_worksheet('MS Patch List by Host')
     vuln_sheet = workbook.worksheets[0]
     vuln_sheet.sheet_name = "MS Patch List by Issue"
-    host_sheet = workbook.worksheets[1]
 
     vuln_sheet.add_cell(1,0, "Microsoft ID")
     vuln_sheet.add_cell(1,1, "Affected Hosts")
@@ -406,14 +404,11 @@ class NessusautoAnalyzer
     end
 
     workbook = RubyXL::Workbook.new
-    workbook.worksheets << RubyXL::Worksheet.new(workbook, 'Vulnerability Details')
-    workbook.worksheets << RubyXL::Worksheet.new(workbook, 'Host list summary')
-    workbook.worksheets << RubyXL::Worksheet.new(workbook, 'Open port list')
     report_info_sheet = workbook.worksheets[0]
     report_info_sheet.sheet_name = "Report info"
-    vulnerability_details_sheet = workbook.worksheets[1]
-    host_list_summary_sheet = workbook.worksheets[2]
-    open_ports_list_sheet = workbook.worksheets[3]
+    vulnerability_details_sheet = workbook.add_worksheet('Vulnerability Details')
+    host_list_summary_sheet = workbook.add_worksheet('Host list summary')
+    open_ports_list_sheet = workbook.add_worksheet('Open port list')
 
     #Setup the report Info Page
     report_info_sheet.add_cell(5,1,"Report type")
