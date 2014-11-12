@@ -16,7 +16,7 @@
 #
 # == Author
 # Author::  Rory McCune
-# Copyright:: Copyright (c) 2013 Rory Mccune
+# Copyright:: Copyright (c) 2014 Rory Mccune
 # License:: GPLv3
 #
 # This program is free software: you can redistribute it and/or modify
@@ -78,7 +78,7 @@ class HTTPScan
 
     @hosts.each do |host|
       begin
-        resp = HTTParty.options(host, {:no_follow => true})
+        resp = HTTParty.options(host, {:no_follow => true, :verify => false})
       rescue HTTParty::RedirectionTooDeep => e
         @headers[host] = e.response.each_header
         #@headers[host]['Was Redirect'] = 'True'
