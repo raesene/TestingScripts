@@ -140,14 +140,21 @@ end
 
 
 def access_check
-  @options.access_file = File.new(@options.input_file_name + '.access','a+')
+  @options.get_request_access_file = File.new(@options.input_file_name + '.get_request_access','a+')
+  @options.head_request_access_file = File.new(@options.input_file_name + '.head_request_access','a+')
+  @options.post_request_access_file = File.new(@options.input_file_name + '.post_request_access','a+')
+  @options.put_request_access_file = File.new(@options.input_file_name + '.put_request_access','a+')
+  @options.delete_request_access_file = File.new(@options.input_file_name + '.delete_request_access','a+')
+
   @final_urls.each do |test|
     url = URI.parse(test)
     begin
     if url.scheme == 'http'
-      response = @http.get(url.request_uri, {'Host' => url.host})
+      get_response = @http.get(url.request_uri, {'Host' => url.host})
+      #head_response = @http.head(url.request_uri, {'Host' => url.host})
     elsif url.scheme == 'https'
-      response = @https.get(url.request_uri, {'Host' => url.host})
+      get_response = @https.get(url.request_uri, {'Host' => url.host})
+      #head_response = @https.head(url.request_uri, {'Host' => url.host})
     end
     rescue NoMethodError => e
       puts "error with url " + url.request_uri
@@ -166,7 +173,8 @@ def access_check
       puts "connection refused on " + url.request_uri
       next
     end
-    @options.access_file.puts(url.scheme + '://' + url.host + url.path + ',' + response.code + ',' + response.body.length.to_s)
+    @options.get_request_access_file.puts(url.scheme + '://' + url.host + url.path + ',' + get_response.code + ',' + get_response.body.length.to_s)
+    #@options.head_request_access_file.puts(url.scheme + '://' + url.host + url.path + ',' + head_response.code + ',' + head_response.body.length.to_s)
   end
 
 end

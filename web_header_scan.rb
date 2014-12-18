@@ -16,7 +16,7 @@
 #
 # == Author
 # Author::  Rory McCune
-# Copyright:: Copyright (c) 2013 Rory Mccune
+# Copyright:: Copyright (c) 2014 Rory Mccune
 # License:: GPLv3
 #
 # This program is free software: you can redistribute it and/or modify
@@ -78,7 +78,7 @@ class HTTPScan
 
     @hosts.each do |host|
       begin
-        resp = HTTParty.options(host, {:no_follow => true})
+        resp = HTTParty.options(host, {:no_follow => true, :verify => false})
       rescue HTTParty::RedirectionTooDeep => e
         @headers[host] = e.response.each_header
         #@headers[host]['Was Redirect'] = 'True'
@@ -102,16 +102,24 @@ class HTTPScan
   def text_report(report_file_base)
     puts "starting report"
     header_report_file = File.new(report_file_base + '.txt' , 'a+')
+    server_report_file = File.new(report_file_base + '-servers.txt','a+')
     header_report_file.puts "Header Report"
     header_report_file.puts "-------------\n"
     sorted_headers = @headers.sort_by {|address,find| address.split('.').map{ |digits| digits.to_i}}
     sorted_headers.each do |host, headers|
       header_report_file.puts host
+      server_report_file.print host + ', '
       header_report_file.puts "----------------"
       headers.each do |key,val|
           header_report_file.puts key + " : " + val
+          if key =~ /server/
+            server_report_file.print val
+          end
       end
+
       header_report_file.puts "\n\n------------\n\n"
+      server_report_file.print "\n"
+
     end
 
   end
@@ -237,7 +245,7 @@ if __FILE__ == $0
     end
 
     opts.on("-v", "--version", "Get Version") do |ver|
-      puts "ICMP Reconnaissance Tool #{HeaderScan::VERSION}"
+      puts "Web Header Tool #{HeaderScan::VERSION}"
       exit
     end
 
