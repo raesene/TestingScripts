@@ -211,6 +211,8 @@ def backup_check
       rescue Timeout::Error
         puts "timeout on " + url.request_uri
         next
+      rescue EOFError
+        puts "End of file error on " + url.request_uri
       end
       @options.backup_file.print ',' + resp.code
       print '.'
