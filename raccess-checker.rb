@@ -2,7 +2,7 @@
 
 # == Author
 # Author::  Rory McCune
-# Copyright:: Copyright (c) 2014 Rory Mccune
+# Copyright:: Copyright (c) 2015 Rory Mccune
 # License:: GPLv3
 #
 # This program is free software: you can redistribute it and/or modify
@@ -142,9 +142,9 @@ end
 def access_check
   @options.get_request_access_file = File.new(@options.input_file_name + '.get_request_access','a+')
   @options.head_request_access_file = File.new(@options.input_file_name + '.head_request_access','a+')
-  @options.post_request_access_file = File.new(@options.input_file_name + '.post_request_access','a+')
-  @options.put_request_access_file = File.new(@options.input_file_name + '.put_request_access','a+')
-  @options.delete_request_access_file = File.new(@options.input_file_name + '.delete_request_access','a+')
+  #@options.post_request_access_file = File.new(@options.input_file_name + '.post_request_access','a+')
+  #@options.put_request_access_file = File.new(@options.input_file_name + '.put_request_access','a+')
+  #@options.delete_request_access_file = File.new(@options.input_file_name + '.delete_request_access','a+')
 
   @final_urls.each do |test|
     url = URI.parse(test)
