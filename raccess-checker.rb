@@ -22,6 +22,7 @@
 # As part of a web application security review
 # TODO:  Need to setup initialize function properly, split out reporting, implement some more checks
 # TODO: Consider re-basing on net/http/persistent if it get a bit more stable.
+# TODO: Ports for SSL shouldn't be hard-coded to 443
 
 
 
@@ -58,8 +59,10 @@ def initialize(arguments)
   @options.unique_url_file = nil
   @options.access_report_file = nil
   @options.backup_report_file = nil
+  @options.check_http = false
   @options.host = nil
   @options.port = 80
+  @options.verbose = false
 
   opts = OptionParser.new do |opts|
     opts.banner = "Ruby Access Checker"
@@ -81,9 +84,19 @@ def initialize(arguments)
     opts.on("-sSERVER","--server SERVER", "Server to be reviewed") do |server|
       @options.host = server
     end
+
     opts.on("-pPort","--port PORT", "Port for server") do |port|
       @options.port = port
     end
+
+    opts.on("--check_http", "Check all URLs on port 80") do |http|
+      @options.check_http = true
+    end
+
+    opts.on("--verbose", "Be verbose during testing") do |v|
+      @options.verbose = true
+    end
+
     
     opts.on("-h","--help","-?","--?", "Get Help") do |help|
       puts opts
@@ -101,7 +114,16 @@ def initialize(arguments)
     exit  
   end
 
-  opts.parse!(arguments)
+  begin
+    opts.parse!(arguments)
+  rescue OptionParser::InvalidOption => e
+    puts 'Got an invalid Option'
+    puts 'Try -h to get a list of valid options'
+    puts 'More details'
+    puts '------------'
+    puts e
+    exit
+  end
 
 
   @http = Net::HTTP::Proxy(PROXY_SERVER,PROXY_PORT).new(@options.host,@options.port)
@@ -121,7 +143,9 @@ def create_unique_url_list
       url = URI.parse(line)
     rescue URI::InvalidURIError
       @log.info("invalid URL " + line)
-      puts 'whups invalid'
+      if @options.verbose
+        puts 'whups invalid : ' + line
+      end
       next
     end
     if !url.path
@@ -140,6 +164,12 @@ end
 
 
 def access_check
+  if @options.verbose
+    puts ''
+    puts "access check starting"
+    puts "----------------------"
+    puts ''
+  end
   @options.get_request_access_file = File.new(@options.input_file_name + '.get_request_access','a+')
   @options.head_request_access_file = File.new(@options.input_file_name + '.head_request_access','a+')
   #@options.post_request_access_file = File.new(@options.input_file_name + '.post_request_access','a+')
@@ -175,6 +205,9 @@ def access_check
     end
     @options.get_request_access_file.puts(url.scheme + '://' + url.host + url.path + ',' + get_response.code + ',' + get_response.body.length.to_s)
     #@options.head_request_access_file.puts(url.scheme + '://' + url.host + url.path + ',' + head_response.code + ',' + head_response.body.length.to_s)
+    if @options.verbose
+      print '.'
+    end
   end
 
 end
@@ -183,6 +216,13 @@ end
 def backup_check
   @options.backup_file = File.new(@options.input_file_name + '.backup','a+')
   @options.backup_file.puts "url, base_result, txt_result, src_result, inc_result, old_result, bak_result"
+  if @options.verbose
+    puts ''
+    puts "backup check starting"
+    puts "----------------------"
+    puts ''
+  end
+
 
   @final_urls.each do |test|
     url = URI.parse(test)
@@ -223,17 +263,73 @@ def backup_check
         puts "End of file error on " + url.request_uri
       end
       @options.backup_file.print ',' + resp.code
-      print '.'
+      if @options.verbose
+        print '.'
+      end
     end
     @options.backup_file.print "\n"
   end
 end
 
+def check_http
+  #The point of this method is to automatically test for cases where you're looking at an https site but want to check whether the file is available unencrypted
+  #over port 80.
+  #don't run if the options not set
+  @log.debug("@options.port is " + @options.port)
+  exit unless @options.check_http
+  @log.debug("http check was passed the relevant command line option")
+  #don't run if we're not checking an SSL site
+  exit unless @options.port == '443'
+  @log.debug("HTTP check running")
+  if @options.verbose
+    puts ''
+    puts 'http access check'
+    puts '-----------------'
+    puts ''
+  end
+  #Need to use a new connection hardcoded to 80
+  http = Net::HTTP::Proxy(PROXY_SERVER,PROXY_PORT).new(@options.host,80)
+  @options.http_request_access_file = File.new(@options.input_file_name + '.http_access','a+')    
+  @final_urls.each do |test|
+    url = URI.parse(test)
+    begin
+      get_response = http.get(url.request_uri, {'Host' => url.host})
+      https_get_response = @https.get(url.request_uri, {'Host' => url.host})
+    rescue NoMethodError => e
+      puts "error with url " + url.request_uri
+      puts e
+      next
+    rescue Errno::ETIMEDOUT
+      puts "timeout"
+      next
+    rescue Errno::ECONNRESET
+      puts "Connection Reset on " + url.request_uri
+      next
+    rescue Timeout::Error
+      puts "timeout on " + url.request_uri
+      next
+    rescue Errno::ECONNREFUSED
+      puts "connection refused on " + url.request_uri
+      next
+    end
+    @options.http_request_access_file.puts(url.scheme + '://' + url.host + url.path + ',' + get_response.code + ',' + https_get_response.code)
+    if @options.verbose
+      print '.'
+    end
+  end
+end
+
 def svn_check
+  if @options.verbose
+    puts ''
+    puts 'SVN Check'
+    puts '---------'
+    puts ''
+  end
   @options.svn_file = File.new(@options.input_file_name + '.svn','a+')
   @options.svn_file.puts "url, base_result, svn_result"
-    @final_urls.each do |test|
-      url = URI.parse(test)
+  @final_urls.each do |test|
+    url = URI.parse(test)
     #next unless url.path.match(/\.[a-zA-Z0-9]+$/)
     @options.svn_file.print(url.scheme + '://' + url.host + url.path)
     base_path = url.path.sub(/\/[a-zA-Z0-9]+$/,'')
@@ -261,7 +357,9 @@ def svn_check
         resp, data = @https.get(base_path + ext, {'Host' => url.host})
       end
       @options.svn_file.print ',' + resp.code
-      print '.'
+      if @options.verbose
+        print '.'
+      end
     end
     @options.svn_file.print "\n"
   end
@@ -273,7 +371,8 @@ end
 if __FILE__ == $0
   checker = RaccessChecker.new(ARGV)
   checker.create_unique_url_list
-  checker.access_check
-  checker.backup_check
-  checker.svn_check
+  #checker.access_check
+  #checker.backup_check
+  #checker.svn_check
+  checker.check_http
 end  
