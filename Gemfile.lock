@@ -24,19 +24,26 @@ GEM
       ntlm-http (~> 0.1, >= 0.1.1)
       webrobots (>= 0.0.9, < 0.2)
     mime-types (1.22)
+    mini_portile (0.6.2)
     multi_json (1.7.2)
     multi_xml (0.5.3)
     nessus-xmlrpc (0.5.0)
     net-http-digest_auth (1.3)
     net-http-persistent (2.8)
     nmap-parser (0.3.5)
-    nokogiri (1.5.9)
-    nokogiri (1.5.9-x86-mingw32)
+    nokogiri (1.6.6.2)
+      mini_portile (~> 0.6.0)
+    nokogiri (1.6.6.2-x86-mingw32)
+      mini_portile (~> 0.6.0)
     ntlm-http (0.1.1)
     pdf-writer (1.1.8)
       color (>= 1.4.0)
       transaction-simple (~> 1.3)
+    rprogram (0.3.2)
     rtf (0.3.3)
+    ruby-nmap (0.7.0)
+      nokogiri (~> 1.3)
+      rprogram (~> 0.3)
     rubyXL (1.2.10)
     rubyzip (0.9.9)
     ruport (1.6.3)
@@ -67,8 +74,9 @@ DEPENDENCIES
   mechanize
   nessus-xmlrpc
   nmap-parser
-  nokogiri
+  nokogiri (>= 1.6.6.2)
   rtf
+  ruby-nmap
   rubyXL
   rubyzip
   ruport

@@ -1,5 +1,5 @@
 source "http://rubygems.org"
-gem "nokogiri"
+gem "nokogiri", ">=1.6.6.2"
 gem "nmap-parser"
 gem "rubyXL"
 gem "ipaddress"
