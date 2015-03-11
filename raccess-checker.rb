@@ -170,21 +170,20 @@ def access_check
     puts "----------------------"
     puts ''
   end
+  #Idempotent Checks
   @options.get_request_access_file = File.new(@options.input_file_name + '.get_request_access','a+')
   @options.head_request_access_file = File.new(@options.input_file_name + '.head_request_access','a+')
-  #@options.post_request_access_file = File.new(@options.input_file_name + '.post_request_access','a+')
-  #@options.put_request_access_file = File.new(@options.input_file_name + '.put_request_access','a+')
-  #@options.delete_request_access_file = File.new(@options.input_file_name + '.delete_request_access','a+')
+
 
   @final_urls.each do |test|
     url = URI.parse(test)
     begin
     if url.scheme == 'http'
       get_response = @http.get(url.request_uri, {'Host' => url.host})
-      #head_response = @http.head(url.request_uri, {'Host' => url.host})
+      head_response = @http.head(url.request_uri, {'Host' => url.host})
     elsif url.scheme == 'https'
       get_response = @https.get(url.request_uri, {'Host' => url.host})
-      #head_response = @https.head(url.request_uri, {'Host' => url.host})
+      head_response = @https.head(url.request_uri, {'Host' => url.host})
     end
     rescue NoMethodError => e
       puts "error with url " + url.request_uri
@@ -204,7 +203,7 @@ def access_check
       next
     end
     @options.get_request_access_file.puts(url.scheme + '://' + url.host + url.path + ',' + get_response.code + ',' + get_response.body.length.to_s)
-    #@options.head_request_access_file.puts(url.scheme + '://' + url.host + url.path + ',' + head_response.code + ',' + head_response.body.length.to_s)
+    @options.head_request_access_file.puts(url.scheme + '://' + url.host + url.path + ',' + head_response.code + ',' + head_response.body.length.to_s)
     if @options.verbose
       print '.'
     end
@@ -212,6 +211,47 @@ def access_check
 
 end
 
+def dangerous_access_checks
+  #This uses HTTP Methods that can affect content on the server be very sure before trying this
+  @options.post_request_access_file = File.new(@options.input_file_name + '.post_request_access','a+')
+  @options.put_request_access_file = File.new(@options.input_file_name + '.put_request_access','a+')
+  @options.delete_request_access_file = File.new(@options.input_file_name + '.delete_request_access','a+')
+  @final_urls.each do |test|
+    url = URI.parse(test)
+    begin
+    if url.scheme == 'http'
+      #post_response = @http.get(url.request_uri, {'Host' => url.host})
+      #put_response = @http.head(url.request_uri, {'Host' => url.host})
+      #delete_response = 
+    elsif url.scheme == 'https'
+      #get_response = @https.get(url.request_uri, {'Host' => url.host})
+      #head_response = @https.head(url.request_uri, {'Host' => url.host})
+      #delete_response = 
+    end
+    rescue NoMethodError => e
+      puts "error with url " + url.request_uri
+      puts e
+      next
+    rescue Errno::ETIMEDOUT
+      puts "timeout"
+      next
+    rescue Errno::ECONNRESET
+      puts "Connection Reset on " + url.request_uri
+      next
+    rescue Timeout::Error
+      puts "timeout on " + url.request_uri
+      next
+    rescue Errno::ECONNREFUSED
+      puts "connection refused on " + url.request_uri
+      next
+    end
+    @options.get_request_access_file.puts(url.scheme + '://' + url.host + url.path + ',' + get_response.code + ',' + get_response.body.length.to_s)
+    @options.head_request_access_file.puts(url.scheme + '://' + url.host + url.path + ',' + head_response.code + ',' + head_response.body.length.to_s)
+    if @options.verbose
+      print '.'
+    end
+  end
+end
 
 def backup_check
   @options.backup_file = File.new(@options.input_file_name + '.backup','a+')
@@ -365,14 +405,59 @@ def svn_check
   end
 end
 
+def git_check
+  if @options.verbose
+    puts ''
+    puts 'Git Check'
+    puts '---------'
+    puts ''
+  end
+  @options.git_file = File.new(@options.input_file_name + '.git', 'a+')
+  @options.git_file.puts "url, base_result, git_result"
+  @final_urls.each do |test|
+    #Only test Directories.  Really we should have a diretories only file for this kind of test
+    next unless test =~ /\/$/
+    url = URI.parse(test)
+    @options.git_file.print(url.scheme + '://' + url.host + url.path)
+    begin
+    if url.scheme == 'http'
+      resp, data = @http.get(url.path, {'Host' => url.host})
+    elsif url.scheme == 'https'
+      resp, data = @https.get(url.path, {'Host' => url.host})
+    end
+    rescue Errno::ETIMEDOUT
+      puts 'timeout'
+      next
+    rescue Timeout::Error
+      puts "timeout on " + url.request_uri
+      next
+    rescue Errno::ECONNREFUSED
+      puts "connection refused on " + url.request_uri
+      next
+    end
+    @options.git_file.print ',' + resp.code
+    if url.scheme == 'http'
+      resp, data = @http.get(url.path + '.git/HEAD', {'Host' => url.host})
+    elsif url.scheme == 'https'
+      resp, data = @https.get(url.path + '.git/HEAD', {'Host' => url.host})
+    end
+    @options.git_file.print ',' + resp.code
+    if @options.verbose
+      print '.'
+    end
+  end
+  @options.git_file.print "\n"
+end
+
+
 end
 
 
 if __FILE__ == $0
   checker = RaccessChecker.new(ARGV)
   checker.create_unique_url_list
-  #checker.access_check
-  #checker.backup_check
-  #checker.svn_check
+  checker.access_check
+  checker.backup_check
+  checker.svn_check
   checker.check_http
 end  
