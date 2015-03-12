@@ -7,6 +7,7 @@ GEM
     domain_name (0.5.23)
       unf (>= 0.0.5, < 1.0.0)
     fastercsv (1.5.5)
+    ffi (1.9.6)
     ffi (1.9.6-x64-mingw32)
     headless (1.0.2)
     http-cookie (1.0.2)
@@ -16,7 +17,7 @@ GEM
       multi_xml (>= 0.5.2)
     ipaddress (0.8.0)
     json (1.8.2)
-    kramdown (1.5.0)
+    kramdown (1.6.0)
     mechanize (2.7.3)
       domain_name (~> 0.5, >= 0.5.1)
       http-cookie (~> 1.0)
@@ -28,12 +29,14 @@ GEM
       webrobots (>= 0.0.9, < 0.2)
     mime-types (2.4.3)
     mini_portile (0.6.2)
-    multi_json (1.10.1)
+    multi_json (1.11.0)
     multi_xml (0.5.5)
     nessus-xmlrpc (0.5.0)
     net-http-digest_auth (1.4)
     net-http-persistent (2.9.4)
     nmap-parser (0.3.5)
+    nokogiri (1.6.6.2)
+      mini_portile (~> 0.6.0)
     nokogiri (1.6.6.2-x64-mingw32)
       mini_portile (~> 0.6.0)
     ntlm-http (0.1.1)
@@ -45,14 +48,14 @@ GEM
     ruby-nmap (0.7.0)
       nokogiri (~> 1.3)
       rprogram (~> 0.3)
-    rubyXL (3.3.4)
+    rubyXL (3.3.7)
       nokogiri (>= 1.4.4)
       rubyzip (>= 1.1.6)
     rubyzip (1.1.7)
     ruport (1.6.3)
       fastercsv
       pdf-writer (= 1.1.8)
-    selenium-webdriver (2.44.0)
+    selenium-webdriver (2.45.0)
       childprocess (~> 0.5)
       multi_json (~> 1.0)
       rubyzip (~> 1.0)
@@ -65,6 +68,7 @@ GEM
     websocket (1.2.1)
 
 PLATFORMS
+  ruby
   x64-mingw32
 
 DEPENDENCIES

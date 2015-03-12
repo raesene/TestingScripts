@@ -448,6 +448,8 @@ def csv_report(data, file)
   end
 end
 
+def excel_report(data, file)
+end  
 end
 
 
