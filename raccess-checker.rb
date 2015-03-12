@@ -25,13 +25,14 @@
 # TODO: Ports for SSL shouldn't be hard-coded to 443
 # TODO: Change file extensions to csv 
 # TODO: RubyXL with conditional formatting
-# TODO: Abstract request handling
+# TODO: Abstract reporting
+# TODO: Abstract request handling - partially done
 
 
 
 class RaccessChecker
 VERSION = '0.1'
-BACKUP_EXTENSIONS = ['txt','src','inc','old','bak']
+BACKUP_EXTENSIONS = ['txt','src','inc','old','bak', '~']
 SVN_EXTENSIONS = ['/.svn/entries']
 #USERAGENT = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.0.1) Gecko/20060111 Firefox/1.5.0.1'
 USERAGENT = 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0'
@@ -385,26 +386,30 @@ def git_check
     puts '---------'
     puts ''
   end
-  @options.git_file = File.new(@options.input_file_name + '.git', 'a+')
-  @options.git_file.puts "url, base_result, git_result"
+  git_data = Array.new
+  @options.git_file = @options.input_file_name + '.git'
+  # @options.git_file.puts "url, base_result, git_result"
+  git_data << ["url", "base_result", "git_result"]
   @final_urls.each do |test|
+    line_array = Array.new
     #Only test Directories.  Really we should have a diretories only file for this kind of test
     next unless test =~ /\/$/
     url = URI.parse(test)
-    @options.git_file.print(url.scheme + '://' + url.host + url.path)
+    line_array << url.scheme + '://' + url.host + url.path
     resp, data = get_page(url)
-    @options.git_file.print ',' + resp.code
+    line_array << resp.code
     if url.scheme == 'http'
       resp, data = @http.get(url.path + '.git/HEAD', {'Host' => url.host})
     elsif url.scheme == 'https'
       resp, data = @https.get(url.path + '.git/HEAD', {'Host' => url.host})
     end
-    @options.git_file.print ',' + resp.code
+    line_array << resp.code
     if @options.verbose
       print '.'
     end
-    @options.git_file.print "\n"
+    git_data << line_array
   end
+  csv_report(git_data, @options.git_file)
 end
 
 private
@@ -425,6 +430,14 @@ def get_page(url)
   end
   return resp, data
 end
+
+def csv_report(data, file)
+  require 'csv'
+  CSV.open(file + ".csv", "wb") do |csv|
+    data.each {|line| csv << line}
+  end
+end
+
 end
 
 
