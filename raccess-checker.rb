@@ -32,7 +32,7 @@
 
 class RaccessChecker
 VERSION = '0.1'
-BACKUP_EXTENSIONS = ['txt','src','inc','old','bak', '~']
+BACKUP_EXTENSIONS = ['txt','src','inc','old','bak']
 SVN_EXTENSIONS = ['/.svn/entries']
 #USERAGENT = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US; rv:1.8.0.1) Gecko/20060111 Firefox/1.5.0.1'
 USERAGENT = 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.0'
@@ -175,8 +175,12 @@ def access_check
     puts ''
   end
   #Idempotent Checks
-  @options.get_request_access_file = File.new(@options.input_file_name + '.get_request_access','a+')
-  @options.head_request_access_file = File.new(@options.input_file_name + '.head_request_access','a+')
+  get_data = Array.new
+  head_data = Array.new
+  @options.get_request_access_file = @options.input_file_name + '.get_request_access'
+  @options.head_request_access_file = @options.input_file_name + '.head_request_access'
+  get_data << ["url", "response code", "response length"]
+  head_data << ["url", "response code"]
 
 
   @final_urls.each do |test|
@@ -206,13 +210,14 @@ def access_check
       puts "connection refused on " + url.request_uri
       next
     end
-    @options.get_request_access_file.puts(url.scheme + '://' + url.host + url.path + ',' + get_response.code + ',' + get_response.body.length.to_s)
-    @options.head_request_access_file.puts(url.scheme + '://' + url.host + url.path + ',' + head_response.code + ',' + '0')
+    get_data << [url.scheme + '://' + url.host + url.path , get_response.code , get_response.body.length.to_s]
+    head_data << [url.scheme + '://' + url.host + url.path , head_response.code]
     if @options.verbose
       print '.'
     end
   end
-
+  csv_report(get_data, @options.get_request_access_file)
+  csv_report(head_data, @options.head_request_access_file)
 end
 
 def dangerous_access_checks
@@ -258,23 +263,23 @@ def dangerous_access_checks
 end
 
 def backup_check
-  @options.backup_file = File.new(@options.input_file_name + '.backup','a+')
-  @options.backup_file.puts "url, base_result, txt_result, src_result, inc_result, old_result, bak_result"
+  backup_data = Array.new
+  @options.backup_file = @options.input_file_name + '.backup'
+  #TODO: Change this so it creates based on the constant at the top of the file.
+  backup_data <<  ["url", "base_result", "txt_result", "src_result", "inc_result", "old_result", "bak_result"]
   if @options.verbose
     puts ''
     puts "backup check starting"
     puts "----------------------"
     puts ''
   end
-
-
   @final_urls.each do |test|
+    line_array = Array.new
     url = URI.parse(test)
-    #next unless url.path.match(/\.[a-zA-Z0-9]+$/)
-    @options.backup_file.print(url.scheme + '://' + url.host + url.path)
+    line_array << url.scheme + '://' + url.host + url.path
     base_path = url.path.sub(/\.[a-zA-Z0-9]+$/,'')
     resp, data = get_page(url)
-    @options.backup_file.print ',' + resp.code
+    line_array << resp.code
     BACKUP_EXTENSIONS.each do |ext|
       begin
       if url.scheme == 'http'
@@ -291,13 +296,14 @@ def backup_check
       rescue EOFError
         puts "End of file error on " + url.request_uri
       end
-      @options.backup_file.print ',' + resp.code
+      line_array << resp.code
       if @options.verbose
         print '.'
       end
     end
-    @options.backup_file.print "\n"
+    backup_data << line_array
   end
+  csv_report(backup_data, @options.backup_file)
 end
 
 def check_http
@@ -318,7 +324,9 @@ def check_http
   end
   #Need to use a new connection hardcoded to 80
   http = Net::HTTP::Proxy(PROXY_SERVER,PROXY_PORT).new(@options.host,80)
-  @options.http_request_access_file = File.new(@options.input_file_name + '.http_access','a+')    
+  http_access_data = Array.new
+  @options.http_request_access_file = @options.input_file_name + '.http_access'
+  http_access_data << ["url", "port_80_response", "port_443_response"]
   @final_urls.each do |test|
     url = URI.parse(test)
     begin
@@ -341,11 +349,12 @@ def check_http
       puts "connection refused on " + url.request_uri
       next
     end
-    @options.http_request_access_file.puts(url.scheme + '://' + url.host + url.path + ',' + get_response.code + ',' + https_get_response.code)
+    http_access_data << ["url.scheme + '://' + url.host + url.path" , get_response.code , https_get_response.code]
     if @options.verbose
       print '.'
     end
   end
+  csv_report(http_access_data, @options.http_request_access_file)
 end
 
 def svn_check
@@ -355,28 +364,30 @@ def svn_check
     puts '---------'
     puts ''
   end
-  @options.svn_file = File.new(@options.input_file_name + '.svn','a+')
-  @options.svn_file.puts "url, base_result, svn_result"
+  svn_data = Array.new
+  @options.svn_file = @options.input_file_name + '.svn'
+  svn_data << ["url", "base_result", "svn_result"]
   @final_urls.each do |test|
+    line_array = Array.new
     url = URI.parse(test)
-    #next unless url.path.match(/\.[a-zA-Z0-9]+$/)
-    @options.svn_file.print(url.scheme + '://' + url.host + url.path)
+    line_array << url.scheme + '://' + url.host + url.path
     base_path = url.path.sub(/\/[a-zA-Z0-9]+$/,'')
     resp, data = get_page(url)
-    @options.svn_file.print ',' + resp.code
+    line_array << resp.code
     SVN_EXTENSIONS.each do |ext|
       if url.scheme == 'http'
         resp, data = @http.get(base_path + ext, {'Host' => url.host})
       elsif url.scheme == 'https'
         resp, data = @https.get(base_path + ext, {'Host' => url.host})
       end
-      @options.svn_file.print ',' + resp.code
+      line_array << resp.code
       if @options.verbose
         print '.'
       end
     end
-    @options.svn_file.print "\n"
+    svn_data << line_array
   end
+  csv_report(svn_data, @options.svn_file)
 end
 
 def git_check
@@ -388,7 +399,6 @@ def git_check
   end
   git_data = Array.new
   @options.git_file = @options.input_file_name + '.git'
-  # @options.git_file.puts "url, base_result, git_result"
   git_data << ["url", "base_result", "git_result"]
   @final_urls.each do |test|
     line_array = Array.new
