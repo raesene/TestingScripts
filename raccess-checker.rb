@@ -23,6 +23,9 @@
 # TODO:  Need to setup initialize function properly, split out reporting, implement some more checks
 # TODO: Consider re-basing on net/http/persistent if it get a bit more stable.
 # TODO: Ports for SSL shouldn't be hard-coded to 443
+# TODO: Change file extensions to csv 
+# TODO: RubyXL with conditional formatting
+# TODO: Abstract request handling
 
 
 
@@ -269,22 +272,7 @@ def backup_check
     #next unless url.path.match(/\.[a-zA-Z0-9]+$/)
     @options.backup_file.print(url.scheme + '://' + url.host + url.path)
     base_path = url.path.sub(/\.[a-zA-Z0-9]+$/,'')
-    begin
-    if url.scheme == 'http'
-      resp, data = @http.get(url.path, {'Host' => url.host})
-    elsif url.scheme == 'https'
-      resp, data = @https.get(url.path, {'Host' => url.host})
-    end
-    rescue Errno::ETIMEDOUT
-      puts 'timeout'
-      next
-    rescue Timeout::Error
-      puts "timeout on " + url.request_uri
-      next
-    rescue Errno::ECONNREFUSED
-      puts "connection refused on " + url.request_uri
-      next      
-    end
+    resp, data = get_page(url)
     @options.backup_file.print ',' + resp.code
     BACKUP_EXTENSIONS.each do |ext|
       begin
@@ -373,22 +361,7 @@ def svn_check
     #next unless url.path.match(/\.[a-zA-Z0-9]+$/)
     @options.svn_file.print(url.scheme + '://' + url.host + url.path)
     base_path = url.path.sub(/\/[a-zA-Z0-9]+$/,'')
-    begin
-    if url.scheme == 'http'
-      resp, data = @http.get(url.path, {'Host' => url.host})
-    elsif url.scheme == 'https'
-      resp, data = @https.get(url.path, {'Host' => url.host})
-    end
-    rescue Errno::ETIMEDOUT
-      puts 'timeout'
-      next
-    rescue Timeout::Error
-      puts "timeout on " + url.request_uri
-      next
-    rescue Errno::ECONNREFUSED
-      puts "connection refused on " + url.request_uri
-      next
-    end
+    resp, data = get_page(url)
     @options.svn_file.print ',' + resp.code
     SVN_EXTENSIONS.each do |ext|
       if url.scheme == 'http'
@@ -419,22 +392,7 @@ def git_check
     next unless test =~ /\/$/
     url = URI.parse(test)
     @options.git_file.print(url.scheme + '://' + url.host + url.path)
-    begin
-    if url.scheme == 'http'
-      resp, data = @http.get(url.path, {'Host' => url.host})
-    elsif url.scheme == 'https'
-      resp, data = @https.get(url.path, {'Host' => url.host})
-    end
-    rescue Errno::ETIMEDOUT
-      puts 'timeout'
-      next
-    rescue Timeout::Error
-      puts "timeout on " + url.request_uri
-      next
-    rescue Errno::ECONNREFUSED
-      puts "connection refused on " + url.request_uri
-      next
-    end
+    resp, data = get_page(url)
     @options.git_file.print ',' + resp.code
     if url.scheme == 'http'
       resp, data = @http.get(url.path + '.git/HEAD', {'Host' => url.host})
@@ -445,11 +403,28 @@ def git_check
     if @options.verbose
       print '.'
     end
+    @options.git_file.print "\n"
   end
-  @options.git_file.print "\n"
 end
 
+private
 
+def get_page(url)
+  begin
+    if url.scheme == 'http'
+      resp, data = @http.get(url.path, {'Host' => url.host})
+    elsif url.scheme == 'https'
+      resp, data = @https.get(url.path, {'Host' => url.host})
+    end
+  rescue Errno::ETIMEDOUT
+    puts 'timeout'
+  rescue Timeout::Error
+    puts "timeout on " + url.request_uri
+  rescue Errno::ECONNREFUSED
+    puts "connection refused on " + url.request_uri
+  end
+  return resp, data
+end
 end
 
 
@@ -459,5 +434,6 @@ if __FILE__ == $0
   checker.access_check
   checker.backup_check
   checker.svn_check
+  checker.git_check
   checker.check_http
 end  
