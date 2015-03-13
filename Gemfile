@@ -13,3 +13,5 @@ gem "rubyzip"
 gem "selenium-webdriver"
 gem "headless"
 gem "ruby-nmap"
+gem "pry"
+

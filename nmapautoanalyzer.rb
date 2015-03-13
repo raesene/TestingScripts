@@ -180,7 +180,7 @@ class NmapautoAnalyzer
       @scanned_files[file][:scan_time] = parser.session.scan_time if parser.session.scan_time
       parser.hosts("up") do |host|
         #TODO: we should add UDP here too, but watch for no-response otherwise we'll get false positive centraled.
-        next if @options.ignore_chatty && host.tcp_ports("open").length > 900
+        next if host.tcp_ports("open").length > 100
         @parsed_hosts[host.addr] = Hash.new unless @parsed_hosts[host.addr]
         host.extraports.each do |portstate|
           if portstate.state == "closed" && portstate.count > 1
