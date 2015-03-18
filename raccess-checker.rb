@@ -67,6 +67,7 @@ class RaccessChecker
     @options.host = nil
     @options.port = 80
     @options.verbose = false
+    @options.debug_mode = false
 
     opts = OptionParser.new do |opts|
       opts.banner = "Ruby Access Checker"
@@ -101,6 +102,10 @@ class RaccessChecker
         @options.verbose = true
       end
 
+      opts.on("--debug", "Enable proxy for debugging") do |d|
+        @options.debug = true
+      end
+
       
       opts.on("-h","--help","-?","--?", "Get Help") do |help|
         puts opts
@@ -129,9 +134,14 @@ class RaccessChecker
       exit
     end
 
+    if @options.debug
+      @http = Net::HTTP::Proxy(PROXY_SERVER,PROXY_PORT).new(@options.host,@options.port)
+      @https = Net::HTTP::Proxy(PROXY_SERVER,PROXY_PORT).new(@options.host,@options.port)
+    else
+      @http = Net::HTTP.new(@options.host,@options.port)
+      @https = Net::HTTP.new(@options.host,@options.port)
+    end
 
-    @http = Net::HTTP::Proxy(PROXY_SERVER,PROXY_PORT).new(@options.host,@options.port)
-    @https = Net::HTTP::Proxy(PROXY_SERVER,PROXY_PORT).new(@options.host,@options.port)
     @https.use_ssl = true
     @https.verify_mode = OpenSSL::SSL::VERIFY_NONE
   end
@@ -280,7 +290,11 @@ class RaccessChecker
       url = URI.parse(test)
       line_array << url.scheme + '://' + url.host + url.path
       base_path = url.path.sub(/\.[a-zA-Z0-9]+$/,'')
-      resp, data = get_page(url)
+      begin
+        resp, data = get_page(url)
+      rescue
+        next
+      end
       line_array << resp.code
       BACKUP_EXTENSIONS.each do |ext|
         begin
@@ -376,7 +390,11 @@ class RaccessChecker
       url = URI.parse(test)
       line_array << url.scheme + '://' + url.host + url.path
       base_path = url.path.sub(/\/[a-zA-Z0-9]+$/,'')
-      resp, data = get_page(url)
+      begin
+        resp, data = get_page(url)
+      rescue
+        next
+      end
       line_array << resp.code
       SVN_EXTENSIONS.each do |ext|
         if url.scheme == 'http'
@@ -392,7 +410,7 @@ class RaccessChecker
       svn_data << line_array
     end
     csv_report(svn_data, @options.svn_file)
-    excel_resport(svn_data, @options.svn_file)
+    excel_report(svn_data, @options.svn_file)
   end
 
   def git_check
@@ -411,8 +429,11 @@ class RaccessChecker
       next unless test =~ /\/$/
       url = URI.parse(test)
       line_array << url.scheme + '://' + url.host + url.path
-      
-      resp, data = get_page(url)
+      begin
+        resp, data = get_page(url)
+      rescue
+        next
+      end
       line_array << resp.code
       if url.scheme == 'http'
         resp, data = @http.get(url.path + '.git/HEAD', {'Host' => url.host})
@@ -440,10 +461,13 @@ class RaccessChecker
       end
     rescue Errno::ETIMEDOUT
       puts 'timeout'
+      raise TimeoutError
     rescue Timeout::Error
       puts "timeout on " + url.request_uri
+      raise TimeoutError
     rescue Errno::ECONNREFUSED
       puts "connection refused on " + url.request_uri
+      raise ConnectionError
     end
     return resp, data
   end
