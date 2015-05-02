@@ -20,12 +20,10 @@
 # == Synopsis
 # This class is designed to take a list of URLs and automatically perform some checks on them
 # As part of a web application security review
-# TODO: Consider re-basing on net/http/persistent if it get a bit more stable.
 # TODO: Ports for SSL shouldn't be hard-coded to 443
-# TODO: RubyXL with conditional formatting
 # TODO: Abstract request handling - partially done
-# TODO: make use of proxy an Option
-# TODO: handle errors returned from get_page
+
+
 
 
 
