@@ -14,3 +14,13 @@
 .idea/vcs.xml
 
 .idea/workspace.xml
+
+site-access-log
+
+nmap-analyzer-log
+
+nmap-parse-report.html
+
+nmap-parse-report.xlsx
+
+nmap-parse-report.txt
