@@ -364,7 +364,7 @@ class RaccessChecker
         puts "connection refused on " + url.request_uri
         next
       end
-      http_access_data << ["url.scheme + '://' + url.host + url.path" , get_response.code , https_get_response.code]
+      http_access_data << [url.scheme + '://' + url.host + url.path , get_response.code , https_get_response.code]
       if @options.verbose
         print '.'
       end
