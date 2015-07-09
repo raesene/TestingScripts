@@ -22,7 +22,7 @@
 # As part of a web application security review
 # TODO: Ports for SSL shouldn't be hard-coded to 443
 # TODO: Abstract request handling - partially done
-
+# TODO: proper fix for status code 204, which doesn't return a body (so length calls bomb out)
 
 
 
@@ -217,6 +217,11 @@ class RaccessChecker
       rescue Errno::ECONNREFUSED
         puts "connection refused on " + url.request_uri
         next
+      end
+      #quick hack for response_code 204
+      if get_response.code.to_i == 204 || head_response.code.to_i == 204
+        get_response.body = "noresponse"
+        head_response.body = "noresponse"
       end
       get_data << [url.scheme + '://' + url.host + url.path , get_response.code , get_response.body.length.to_s]
       head_data << [url.scheme + '://' + url.host + url.path , head_response.code]
