@@ -51,8 +51,6 @@
   #   nmapautoanalyzer.rb -f <filename> -r <reportfile>
 
 
-
-
 class NmapautoAnalyzer
 
   VERSION = '0.2.4'
@@ -64,9 +62,7 @@ class NmapautoAnalyzer
     
     require 'rubygems'
     require 'logger'
-    
-    
-  
+      
     #this is needed to tack on to file checks in 1.9.2 as the current directory is no longer on the lib path
     script_dir = File.expand_path( File.dirname(__FILE__) )
 
@@ -81,12 +77,6 @@ class NmapautoAnalyzer
       puts "Couldn't find or load the nmap parser library.  'gem install nmap-parser' should work"
       exit
     end
-    
-   
-    
-
-
-
     
     @base_dir = @options.report_directory
     @scan_dir = @options.scan_directory
@@ -149,7 +139,6 @@ class NmapautoAnalyzer
     end
   end
 
-
   #Parses the nmap xml files and populates the arrays needed by the report
   def parse_files
     #Hash to put the information for each host into
@@ -207,7 +196,6 @@ class NmapautoAnalyzer
           @os_hash[host.addr] = host.os.name + ', ' + host.os.name_accuracy.to_s
         end
 
-
         host.tcp_ports("open") do |port|
           #Add the port to the ports array
           @ports << port.num.to_s
@@ -226,9 +214,7 @@ class NmapautoAnalyzer
             @web_headers_hash[host.addr + ':' + port.num.to_s] = host.tcp_script(port.num.to_s, 'http-methods').output.split("\n")[0]
           end
         end
-        
-
-
+  
         host.udp_ports("open") do |port|
           next if port.reason == "no-response"
           #Add the port to the ports array
@@ -429,8 +415,6 @@ class NmapautoAnalyzer
     workbook.write(@excel_report_file_name)
   end
   
-
-
 end
 
 if __FILE__ == $0
@@ -459,7 +443,7 @@ if __FILE__ == $0
     end
       
     opts.on("-r", "--report [REPORT]", "Report name") do |rep|
-      options.report_file = rep
+      options.report_file = 'nmap_' + rep
     end
 
     opts.on("--reportDirectory [REPORTDIRECTORY]", "Report Directory") do |rep|
@@ -492,9 +476,6 @@ if __FILE__ == $0
     puts opts
     exit
   end
-
-
-
 
   analysis = NmapautoAnalyzer.new(options)
   analysis.run
