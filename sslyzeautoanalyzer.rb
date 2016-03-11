@@ -11,6 +11,8 @@
   #
   # File mode takes a parameter of a single file and parses that
   #
+  #TODO:
+  # - File bug report where root CAs are getting tagged as intermediate stopping us checking SHA-1 (e.g. geotrust CA)
   #
   # == Author
   # Author::  Rory McCune
@@ -143,9 +145,26 @@ class SslyzeAutoAnalyzer
       address = host['host']
       #Need to account for the poss. that this already exists?
       @host_results[address] = Hash.new
-      if host.xpath('//certificateValidation/pathValidation')[0]['validationResult'] == "self signed certificate"
+      #Check for Self-Signed Certificate
+      if host.xpath('certinfo_basic/certificateValidation/pathValidation')[0]['validationResult'] == "self signed certificate"
         @host_results[address]['self_signed'] = true
       end
+      #Check for untrusted root
+      if host.xpath('certinfo_basic/certificateValidation/pathValidation')[0]['validationResult'] == "unable to get local issuer certificate"
+        @host_results[address]['untrusted_issuer'] = true
+      end
+      #Check for Expired Cert
+      if host.xpath('certinfo_basic/certificateValidation/pathValidation')[0]['validationResult'] == "certificate has expired"
+        @host_results[address]['expired_cert'] = true
+      end
+      #Check for hostname mismatch
+      if host.xpath('certinfo_basic/certificateValidation/hostnameValidation')[0]['certificateMatchesHostname'] == "False"
+        @host_results[address]['hostname_mismatch'] = true
+      end
+
+
+      #Check for SHA-1 Signed Certificate is fine for leafs, intermediates are trickier
+      @host_results[address]['sha1_signed'] = host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('signatureAlgorithm').inner_text
     end
   end
 
@@ -162,10 +181,23 @@ class SslyzeAutoAnalyzer
 
     vuln_sheet.add_cell(1,0,"IP Address")
     vuln_sheet.add_cell(1,1,"Self Signed Certificate?")
+    vuln_sheet.add_cell(1,2,"Untrusted Issuer?")
+    vuln_sheet.add_cell(1,3,"Hostname Mismatch?")
+    vuln_sheet.add_cell(1,4,"Certificate without WWW?")
+    vuln_sheet.add_cell(1,5,"Expired Certificate?")
+    vuln_sheet.add_cell(1,6,"Certificate Expiry Imminent?")
+    vuln_sheet.add_cell(1,7,"Small Public Key?")
+    vuln_sheet.add_cell(1,8,"Wildcard Certificate?")
+    vuln_sheet.add_cell(1,9,"Certificate Revoked?")
+    vuln_sheet.add_cell(1,10,"Certificate Signature Algorithm")
     row_count = 2
     @host_results.each do |host, vulns|
       vuln_sheet.add_cell(row_count,0,host)
       vuln_sheet.add_cell(row_count,1,vulns['self_signed'])
+      vuln_sheet.add_cell(row_count,2,vulns['untrusted_issuer'])
+      vuln_sheet.add_cell(row_count,3,vulns['hostname_mismatch'])
+      vuln_sheet.add_cell(row_count,5,vulns['expired_cert'])
+      vuln_sheet.add_cell(row_count,10,vulns['sha1_signed'])
       row_count = row_count + 1
     end
 
