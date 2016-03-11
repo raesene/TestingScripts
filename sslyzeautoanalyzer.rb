@@ -1,5 +1,9 @@
 #!/usr/bin/env ruby
-
+  # !!NB!!
+  # This tool isn't ready for use, so don't :)
+  #
+  #
+  #
   # == Synopsis
   # This script is designed to co-ordinate parsing of sslyze xml files and production of a concise set findings.
   #
@@ -158,7 +162,7 @@ class SslyzeAutoAnalyzer
         @host_results[address]['expired_cert'] = true
       end
       #Check for hostname mismatch
-      if host.xpath('certinfo_basic/certificateValidation/hostnameValidation')[0]['certificateMatchesHostname'] == "False"
+      if host.xpath('certinfo_basic/certificateValidation/hostnameValidation')[0]['certificateMatchesServerHostname'] == "False"
         @host_results[address]['hostname_mismatch'] = true
       end
 
@@ -179,10 +183,10 @@ class SslyzeAutoAnalyzer
     vuln_sheet = workbook.worksheets[0]
     vuln_sheet.sheet_name = "SSLyze Results"
 
-    vuln_sheet.add_cell(1,0,"IP Address")
+    vuln_sheet.add_cell(1,0,"Hostname/IP Address")
     vuln_sheet.add_cell(1,1,"Self Signed Certificate?")
     vuln_sheet.add_cell(1,2,"Untrusted Issuer?")
-    vuln_sheet.add_cell(1,3,"Hostname Mismatch?")
+    vuln_sheet.add_cell(1,3,"Subject Mismatch with Hostname?")
     vuln_sheet.add_cell(1,4,"Certificate without WWW?")
     vuln_sheet.add_cell(1,5,"Expired Certificate?")
     vuln_sheet.add_cell(1,6,"Certificate Expiry Imminent?")
