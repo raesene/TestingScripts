@@ -177,10 +177,17 @@ class SslyzeAutoAnalyzer
 
 
       ## Protocol Issues
-      @host_results[address]['ssvl2_supported'] = host.xpath('sslv2')[0]['isProtocolSupported'])
-      @host_results[address]['ssvl3_supported'] = host.xpath('sslv3')[0]['isProtocolSupported'])
-      @host_results[address]['tlsv1_1_supported'] = host.xpath('tlsv1_1')[0]['isProtocolSupported'])
-      @host_results[address]['tlsv1_2_supported'] = host.xpath('tlsv1_2')[0]['isProtocolSupported'])
+      @host_results[address]['sslv2_supported'] = host.xpath('sslv2')[0]['isProtocolSupported']
+      @host_results[address]['sslv3_supported'] = host.xpath('sslv3')[0]['isProtocolSupported']
+      
+      @host_results[address]['tlsv1_1_supported'] = host.xpath('tlsv1_1')[0]['isProtocolSupported']
+      @host_results[address]['tlsv1_2_supported'] = host.xpath('tlsv1_2')[0]['isProtocolSupported']
+      if (host.xpath('tlsv1_1')[0]['isProtocolSupported'] == "False" && host.xpath('tlsv1_2')[0]['isProtocolSupported'] == "False")
+        @host_results[address]['no_tls_v1_1_2'] = "True"
+      else 
+        @host_results[address]['no_tls_v1_1_2'] = "False"
+      end
+      @host_results[address]['client_renegotiation'] = host.xpath('reneg/sessionRenegotiation')[0]['canBeClientInitiated']
     end
   end
 
@@ -210,8 +217,12 @@ class SslyzeAutoAnalyzer
     cipher_sheet = workbook.add_worksheet('Cipher Issues')
 
     protocol_sheet = workbook.add_worksheet('Protocol Issues')
-    protocol_sheet.add_cell(0,0,"SSLv2 Supported")
-    protocol_sheet.add_cell(1,0,"SSLv3 Supported")
+    protocol_sheet.add_cell(0,0,"Hostname/IP Address")
+    protocol_sheet.add_cell(0,1,"SSLv2 Supported")
+    protocol_sheet.add_cell(0,2,"SSLv3 Supported")
+    protocol_sheet.add_cell(0,3,"Poodle over TLS")
+    protocol_sheet.add_cell(0,4,"No support for TLS above 1.0")
+    protocol_sheet.add_cell(0,5,"Client-Initiated Renogotiation DoS")
 
     row_count = 1
     @host_results.each do |host, vulns|
@@ -226,8 +237,13 @@ class SslyzeAutoAnalyzer
       cert_sheet.add_cell(row_count,8,vulns['wildcard_cert'])
       cert_sheet.add_cell(row_count,9,"Not Tested")
       cert_sheet.add_cell(row_count,10,vulns['sha1_signed'])
-      protocol_sheet.add_cell(row_count,0,vulns['sslv2'])
-      protocol_sheet.add_cell(row_count,1,vulns['sslv3'])
+      protocol_sheet.add_cell(row_count,0,host)
+      protocol_sheet.add_cell(row_count,1,vulns['sslv2_supported'])
+      protocol_sheet.add_cell(row_count,2,vulns['sslv3_supported'])
+      protocol_sheet.add_cell(row_count,3,"Not Tested")
+      protocol_sheet.add_cell(row_count,4,vulns['no_tls_v1_1_2'])
+      protocol_sheet.add_cell(row_count,5,vulns['client_renegotiation'])
+
 
       row_count = row_count + 1
     end
