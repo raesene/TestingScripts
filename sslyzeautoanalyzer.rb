@@ -149,6 +149,7 @@ class SslyzeAutoAnalyzer
       address = host['host']
       #Need to account for the poss. that this already exists?
       @host_results[address] = Hash.new
+      ##Certificate Issues
       #Check for Self-Signed Certificate
       if host.xpath('certinfo_basic/certificateValidation/pathValidation')[0]['validationResult'] == "self signed certificate"
         @host_results[address]['self_signed'] = true
@@ -171,10 +172,15 @@ class SslyzeAutoAnalyzer
       if host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('subject/commonName').inner_text =~ /\*/
         @host_results[address]['wildcard_cert'] = true
       end
-
-
       #Check for SHA-1 Signed Certificate is fine for leafs, intermediates are trickier
       @host_results[address]['sha1_signed'] = host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('signatureAlgorithm').inner_text
+
+
+      ## Protocol Issues
+      @host_results[address]['ssvl2_supported'] = host.xpath('sslv2')[0]['isProtocolSupported'])
+      @host_results[address]['ssvl3_supported'] = host.xpath('sslv3')[0]['isProtocolSupported'])
+      @host_results[address]['tlsv1_1_supported'] = host.xpath('tlsv1_1')[0]['isProtocolSupported'])
+      @host_results[address]['tlsv1_2_supported'] = host.xpath('tlsv1_2')[0]['isProtocolSupported'])
     end
   end
 
@@ -186,30 +192,43 @@ class SslyzeAutoAnalyzer
     end
 
     workbook = RubyXL::Workbook.new
-    vuln_sheet = workbook.worksheets[0]
-    vuln_sheet.sheet_name = "SSLyze Results"
+    cert_sheet = workbook.worksheets[0]
+    cert_sheet.sheet_name = "Certificate Issues"
 
-    vuln_sheet.add_cell(1,0,"Hostname/IP Address")
-    vuln_sheet.add_cell(1,1,"Self Signed Certificate?")
-    vuln_sheet.add_cell(1,2,"Untrusted Issuer?")
-    vuln_sheet.add_cell(1,3,"Subject Mismatch with Hostname?")
-    vuln_sheet.add_cell(1,4,"Certificate without WWW?")
-    vuln_sheet.add_cell(1,5,"Expired Certificate?")
-    vuln_sheet.add_cell(1,6,"Certificate Expiry Imminent?")
-    vuln_sheet.add_cell(1,7,"Public Key Size")
-    vuln_sheet.add_cell(1,8,"Wildcard Certificate?")
-    vuln_sheet.add_cell(1,9,"Certificate Revoked?")
-    vuln_sheet.add_cell(1,10,"Certificate Signature Algorithm")
-    row_count = 2
+    cert_sheet.add_cell(0,0,"Hostname/IP Address")
+    cert_sheet.add_cell(0,1,"Self Signed Certificate?")
+    cert_sheet.add_cell(0,2,"Untrusted Issuer?")
+    cert_sheet.add_cell(0,3,"Subject Mismatch with Hostname?")
+    cert_sheet.add_cell(0,4,"Certificate without WWW?")
+    cert_sheet.add_cell(0,5,"Expired Certificate?")
+    cert_sheet.add_cell(0,6,"Certificate Expiry Imminent?")
+    cert_sheet.add_cell(0,7,"Public Key Size")
+    cert_sheet.add_cell(0,8,"Wildcard Certificate?")
+    cert_sheet.add_cell(0,9,"Certificate Revoked?")
+    cert_sheet.add_cell(0,10,"Certificate Signature Algorithm")
+
+    cipher_sheet = workbook.add_worksheet('Cipher Issues')
+
+    protocol_sheet = workbook.add_worksheet('Protocol Issues')
+    protocol_sheet.add_cell(0,0,"SSLv2 Supported")
+    protocol_sheet.add_cell(1,0,"SSLv3 Supported")
+
+    row_count = 1
     @host_results.each do |host, vulns|
-      vuln_sheet.add_cell(row_count,0,host)
-      vuln_sheet.add_cell(row_count,1,vulns['self_signed'])
-      vuln_sheet.add_cell(row_count,2,vulns['untrusted_issuer'])
-      vuln_sheet.add_cell(row_count,3,vulns['hostname_mismatch'])
-      vuln_sheet.add_cell(row_count,5,vulns['expired_cert'])
-      vuln_sheet.add_cell(row_count,7,vulns['public_key_size'])
-      vuln_sheet.add_cell(row_count,8,vulns['wildcard_cert'])
-      vuln_sheet.add_cell(row_count,10,vulns['sha1_signed'])
+      cert_sheet.add_cell(row_count,0,host)
+      cert_sheet.add_cell(row_count,1,vulns['self_signed'])
+      cert_sheet.add_cell(row_count,2,vulns['untrusted_issuer'])
+      cert_sheet.add_cell(row_count,3,vulns['hostname_mismatch'])
+      cert_sheet.add_cell(row_count,4,"Not Tested")
+      cert_sheet.add_cell(row_count,5,vulns['expired_cert'])
+      cert_sheet.add_cell(row_count,6,"Not Tested")
+      cert_sheet.add_cell(row_count,7,vulns['public_key_size'])
+      cert_sheet.add_cell(row_count,8,vulns['wildcard_cert'])
+      cert_sheet.add_cell(row_count,9,"Not Tested")
+      cert_sheet.add_cell(row_count,10,vulns['sha1_signed'])
+      protocol_sheet.add_cell(row_count,0,vulns['sslv2'])
+      protocol_sheet.add_cell(row_count,1,vulns['sslv3'])
+
       row_count = row_count + 1
     end
 
