@@ -168,6 +168,10 @@ class SslyzeAutoAnalyzer
       #Check Public Key Size
       @host_results[address]['public_key_size'] = host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('subjectPublicKeyInfo/publicKeySize').inner_text
 
+      if host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('subject/commonName').inner_text =~ /\*/
+        @host_results[address]['wildcard_cert'] = true
+      end
+
 
       #Check for SHA-1 Signed Certificate is fine for leafs, intermediates are trickier
       @host_results[address]['sha1_signed'] = host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('signatureAlgorithm').inner_text
@@ -204,6 +208,7 @@ class SslyzeAutoAnalyzer
       vuln_sheet.add_cell(row_count,3,vulns['hostname_mismatch'])
       vuln_sheet.add_cell(row_count,5,vulns['expired_cert'])
       vuln_sheet.add_cell(row_count,7,vulns['public_key_size'])
+      vuln_sheet.add_cell(row_count,8,vulns['wildcard_cert'])
       vuln_sheet.add_cell(row_count,10,vulns['sha1_signed'])
       row_count = row_count + 1
     end
