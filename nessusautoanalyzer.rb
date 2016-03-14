@@ -142,6 +142,7 @@ class NessusautoAnalyzer
     @info_vulns = Hash.new
     @exploitable_vulns = Hash.new
     @web_server_list = Array.new
+    @ssl_server_list = Array.new
     #Array for list of files reviewed (Do I need this?)
     @scanned_files = Array.new
     @scan_files.each do |file|      
@@ -222,8 +223,21 @@ class NessusautoAnalyzer
         if item['svc_name'] == 'www'
           if item.xpath('plugin_output').text =~ /TLSv1|SSLv3/
             @web_server_list << 'https://' + ip_address + ':' + item['port']
+            #@ssl_server_list << ip_address + ':' + item['port']
           else
             @web_server_list << 'http://' + ip_address + ':' + item['port'] unless item['port'] == '443'
+          end
+        end
+
+        if item['pluginName'] == 'SSL Certificate Information'
+          cn_string = issue['plugin_output'][/Common Name: .*$/]
+          #Lose the Common Name
+          cn_string.sub!(/Common Name: /,'')
+          #For Wild Card Certs
+          if cn_string =~ /\*/
+            @ssl_server_list << ip_address + ':' + item['port']
+          else
+            @ssl_server_list << cn_string + ':' + item['port']
           end
         end
         
@@ -570,6 +584,7 @@ class NessusautoAnalyzer
     @info_report_file = File.new(@base_dir + '/' + @options.report_file + '_nessus_informational.txt','w+')
     @host_report_file = File.new(@base_dir + '/' + @options.report_file + '_nessus_hosts.txt','w+')
     @web_server_report_file = File.new(@base_dir + '/' + @options.report_file + '_web_servers.txt','w+')
+    @ssl_server_report_file = File.new(@base_dir + '/' + @options.report_file + '_ssl_servers.txt','w+')
 
     @exploitable_vulns.each do |address,exploit|
       @exploitable_report_file.puts "exploitable issues for #{address}"
@@ -640,6 +655,10 @@ class NessusautoAnalyzer
     
     @web_server_list.uniq.each do |host|
       @web_server_report_file.puts host
+    end
+
+    @ssl_server_list.uniq.each do |host|
+      @ssl_server_report_file.puts host
     end
 
     @host_report_file.puts "Issues by Host"
