@@ -68,7 +68,7 @@ class NessusautoAnalyzer
     begin
       require 'rubygems'
       require 'logger'
-      
+      require 'resolv'
       require 'nokogiri'
 
     rescue LoadError => e
@@ -229,6 +229,8 @@ class NessusautoAnalyzer
           end
         end
 
+        #This is to populate a list of servers to run SSL scanners on 
+        
         if item['pluginName'] == 'SSL Certificate Information'
           cn_string = issue['plugin_output'][/Common Name: .*$/]
           #Lose the Common Name
@@ -236,8 +238,14 @@ class NessusautoAnalyzer
           #For Wild Card Certs
           if cn_string =~ /\*/
             @ssl_server_list << ip_address + ':' + item['port']
-          else
-            @ssl_server_list << cn_string + ':' + item['port']
+          else 
+            #This next bit is a sanity check to make sure that the CN actually belongs to the IP address
+            add = Resolv.getaddresses(cn_string)
+            if add.include?(ip_address)
+              @ssl_server_list << cn_string + ':' + item['port']
+            else
+              @ssl_server_list << ip_address + ':' + item['port']
+            end
           end
         end
         
