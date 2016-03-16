@@ -665,7 +665,7 @@ class NessusautoAnalyzer
       @web_server_report_file.puts host
     end
 
-    @ssl_server_list.uniq.each do |host|
+    @ssl_server_list.each do |host|
       @ssl_server_report_file.puts host
     end
 

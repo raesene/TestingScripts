@@ -122,11 +122,12 @@ class WebScreenRecon
       begin
         filename = ip.gsub(/[\,\:\/]/,'_') + ".png"
         puts filename
-        
+        @driver = Selenium::WebDriver.for :firefox
         @driver.navigate.to ip
         @headless.take_screenshot(filename)
         @output_file_names[ip] = filename
         @log.info("Saved " + ip)
+        @driver.quit
       rescue Timeout::Error
         @log.warn "Whoops didn't work with address " + ip
         #If we timeout close the driver and open a new one
