@@ -53,6 +53,7 @@ class WebScreenRecon
     @options.input_file = ''
     @options.output_dir = base_dir
     @options.log_file = 'WSRT.log'
+    @options.sleep_time = 5
 
 
     opts = OptionParser.new do |opts|
@@ -64,6 +65,10 @@ class WebScreenRecon
 
       opts.on("-d", "--directory [DIRECTORY]", "Output Directory for Screen Caps") do |dir|
         @options.output_dir = File.expand_path(dir)
+      end
+
+      opts.on("-s", "--sleep [SECONDS]", "Number of seconds to sleep before screenshot") do |sleep|
+        @options.sleep_time = sleep
       end
 
       opts.on("-h", "--help", "-?", "--?", "Get Help") do |help|
@@ -124,6 +129,7 @@ class WebScreenRecon
         puts filename
         @driver = Selenium::WebDriver.for :firefox
         @driver.navigate.to ip
+        sleep(@options.sleep_time)
         @headless.take_screenshot(filename)
         @output_file_names[ip] = filename
         @log.info("Saved " + ip)
@@ -132,7 +138,6 @@ class WebScreenRecon
         @log.warn "Whoops didn't work with address " + ip
         #If we timeout close the driver and open a new one
         @driver.quit
-        
         @driver = Selenium::WebDriver.for :firefox
       rescue Selenium::WebDriver::Error::WebDriverError
         @log.warn "darn unstable firefox"

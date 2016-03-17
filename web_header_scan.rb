@@ -78,10 +78,10 @@ class HTTPScan
 
     @hosts.each do |host|
       begin
-        resp = HTTParty.options(host, {:no_follow => true, :verify => false})
+        #resp = HTTParty.get(host, {:no_follow => true, :verify => false})
+        resp = HTTParty.get(host, {:verify => false})
       rescue HTTParty::RedirectionTooDeep => e
-        @headers[host] = e.response.each_header
-        #@headers[host]['Was Redirect'] = 'True'
+        puts 'too deep on ' + host
         next
       rescue Timeout::Error
         puts "Timeout Error on " + host
@@ -91,10 +91,77 @@ class HTTPScan
         puts e.to_s
         next
       end
-
       @headers[host] = resp.headers
-
     end
+  end
+
+  def excel_report(report_file_base)
+    begin
+      require 'resolv'
+      require 'rubyXL'
+      require 'uri'
+    rescue LoadError
+      puts 'The excel report requires rubyXL'
+      puts 'try gem install rubyXL'
+      exit
+    end
+
+    workbook = RubyXL::Workbook.new
+    info_sheet = workbook.worksheets[0]
+    info_sheet.sheet_name = "Server Information Headers"
+    info_sheet.add_cell(0,0,"IP Address")
+    info_sheet.add_cell(0,1,"Hostname")
+    info_sheet.add_cell(0,2,"Server")
+    info_sheet.add_cell(0,3,"X-Powered-By")
+    info_sheet.add_cell(0,4,"X-AspNet-Version")
+    info_sheet.add_cell(0,5,"X-AspNetmvc-Version")
+
+    security_sheet = workbook.add_worksheet('Security Headers')
+
+    security_sheet.sheet_name = "Server Security Headers"
+
+    security_sheet.add_cell(0,0,"IP Address")
+    security_sheet.add_cell(0,1,"Hostname")
+    security_sheet.add_cell(0,2,"X-XSS-Protection")
+    security_sheet.add_cell(0,3,"Strict-Transport-Security")
+    security_sheet.add_cell(0,4,"X-Content-Type-Options")
+    security_sheet.add_cell(0,5,"Cache-Control")
+    security_sheet.add_cell(0,6,"Content-Security-Policy")
+
+    row_count = 1
+    @headers.each do |host, headers|
+      url = URI.parse(host)
+      if url.host =~ /\A(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\Z/
+        ip_address = url.host
+      else
+        ip_address = Resolv.getaddress(url.host)
+      end
+      info_sheet.add_cell(row_count,0,ip_address)
+      
+      if ip_address == url.host
+        info_sheet.add_cell(row_count,1,"Unknown")
+      else
+        info_sheet.add_cell(row_count,1,url.host)
+      end
+      info_sheet.add_cell(row_count,2,headers['server'])
+      info_sheet.add_cell(row_count,3,headers['x-powered-by'])
+      info_sheet.add_cell(row_count,4,headers['x-aspnet-version'])
+      info_sheet.add_cell(row_count,5,headers['x-aspnetmvc-version'])
+
+      security_sheet.add_cell(row_count,0,ip_address)
+      if ip_address == url.host
+        security_sheet.add_cell(row_count,1,"Unknown")
+      else
+        security_sheet.add_cell(row_count,1,url.host)
+      end
+      security_sheet.add_cell(row_count,2,headers['x-xss-protection'])
+      security_sheet.add_cell(row_count,3,headers['strict-transport-security'])
+      security_sheet.add_cell(row_count,4,headers['x-content-type-options'])
+      security_sheet.add_cell(row_count,5,headers['cache-control'])
+      security_sheet.add_cell(row_count,6,headers['content-security-policy'])
+      row_count = row_count + 1
+    end
+    workbook.write(report_file_base + '_headers.xlsx')
 
 
   end
@@ -215,6 +282,7 @@ if __FILE__ == $0
   options.text_report = false
   options.html_report = false
   options.rtf_report = false
+  options.excel_report = false
 
   opts = OptionParser.new do |opts|
     opts.banner = "HTTP Scanner #{HTTPScan::VERSION}"
@@ -233,6 +301,10 @@ if __FILE__ == $0
 
     opts.on("--rtfReport", "Create an RTF Report") do |rtfrep|
       options.rtf_report = true
+    end
+
+    opts.on("--excelReport", "Create an Excel Report") do |excelrep|
+      options.excel_report = true
     end
 
     opts.on("--reportPrefix [REPREF]", "Prefix for report files") do |repref|
@@ -259,9 +331,9 @@ if __FILE__ == $0
     exit
   end
 
-  unless options.rtf_report || options.text_report || options.html_report
+  unless options.rtf_report || options.text_report || options.html_report || options.excel_report
     puts "no reporting specified"
-    puts "you need to use one of --textReport, --htmlReport or --rtfReport"
+    puts "you need to use one of --textReport, --htmlReport, --excelReport or --rtfReport"
     puts opts
     exit
   end
@@ -289,6 +361,10 @@ if __FILE__ == $0
 
   if options.rtf_report
     scan.rtf_report(options.report_file_base)
+  end
+
+  if options.excel_report
+    scan.excel_report(options.report_file_base)
   end
 
 
