@@ -187,7 +187,16 @@ class SslyzeAutoAnalyzer
       else 
         @host_results[address]['no_tls_v1_1_2'] = "False"
       end
+
       @host_results[address]['client_renegotiation'] = host.xpath('reneg/sessionRenegotiation')[0]['canBeClientInitiated']
+      unless host.xpath('reneg/sessionRenegotiation')[0]['isSecure'] == "True"
+        @host_results[address]['insecure_renegotiation'] = "True"
+      else
+        @host_results[address]['insecure_renegotiation'] = "False"
+      end
+
+      @host_results[address]['ccs_vuln'] = host.xpath('openssl_ccs/openSslCcsInjection')[0]['isVulnerable']
+
     end
   end
 
@@ -215,6 +224,13 @@ class SslyzeAutoAnalyzer
     cert_sheet.add_cell(0,10,"Certificate Signature Algorithm")
 
     cipher_sheet = workbook.add_worksheet('Cipher Issues')
+    cipher_sheet.add_cell(0,0,"Hostname/IP Address")
+    cipher_sheet.add_cell(0,1,"Anonymous Ciphers Supported")
+    cipher_sheet.add_cell(0,2,"Weak Ciphers Supported")
+    cipher_sheet.add_cell(0,3,"RC4 Ciphers Supported")
+    cipher_sheet.add_cell(0,4,"Weak Diffie-hellman")
+    cipher_sheet.add_cell(0,5,"Weak RSA Key Exchange")
+    cipher_sheet.add_cell(0,6,"Forward Secrecy Unsupported")
 
     protocol_sheet = workbook.add_worksheet('Protocol Issues')
     protocol_sheet.add_cell(0,0,"Hostname/IP Address")
@@ -223,6 +239,10 @@ class SslyzeAutoAnalyzer
     protocol_sheet.add_cell(0,3,"Poodle over TLS")
     protocol_sheet.add_cell(0,4,"No support for TLS above 1.0")
     protocol_sheet.add_cell(0,5,"Client-Initiated Renogotiation DoS")
+    protocol_sheet.add_cell(0,6,"Insecure Renogotiation")
+    protocol_sheet.add_cell(0,7,"Compression Supported")
+    protocol_sheet.add_cell(0,8,"OpenSSL ChangeCipherSpec (CCS) Vulnerability")
+    protocol_sheet.add_cell(0,9,"BEAST")
 
     row_count = 1
     @host_results.each do |host, vulns|
@@ -237,12 +257,23 @@ class SslyzeAutoAnalyzer
       cert_sheet.add_cell(row_count,8,vulns['wildcard_cert'])
       cert_sheet.add_cell(row_count,9,"Not Tested")
       cert_sheet.add_cell(row_count,10,vulns['sha1_signed'])
+      cipher_sheet.add_cell(row_count,0,host)
+      cipher_sheet.add_cell(row_count,1,"Not Tested")
+      cipher_sheet.add_cell(row_count,2,"Not Tested")
+      cipher_sheet.add_cell(row_count,3,"Not Tested")
+      cipher_sheet.add_cell(row_count,4,"Not Tested")
+      cipher_sheet.add_cell(row_count,5,"Not Tested")
+      cipher_sheet.add_cell(row_count,6,"Not Tested")
       protocol_sheet.add_cell(row_count,0,host)
       protocol_sheet.add_cell(row_count,1,vulns['sslv2_supported'])
       protocol_sheet.add_cell(row_count,2,vulns['sslv3_supported'])
       protocol_sheet.add_cell(row_count,3,"Not Tested")
       protocol_sheet.add_cell(row_count,4,vulns['no_tls_v1_1_2'])
       protocol_sheet.add_cell(row_count,5,vulns['client_renegotiation'])
+      protocol_sheet.add_cell(row_count,6,vulns['insecure_renegotiation'])
+      protocol_sheet.add_cell(row_count,7,vulns['compression'])
+      protocol_sheet.add_cell(row_count,8,vulns['ccs_vuln'])
+      protocol_sheet.add_cell(row_count,9,"Not Tested")
 
 
       row_count = row_count + 1
