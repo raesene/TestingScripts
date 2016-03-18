@@ -127,6 +127,7 @@ class HTTPScan
     security_sheet.add_cell(0,4,"X-Content-Type-Options")
     security_sheet.add_cell(0,5,"Cache-Control")
     security_sheet.add_cell(0,6,"Content-Security-Policy")
+    security_sheet.add_cell(0,7,"X-Frame-Options")
 
     row_count = 1
     @headers.each do |host, headers|
@@ -159,6 +160,7 @@ class HTTPScan
       security_sheet.add_cell(row_count,4,headers['x-content-type-options'])
       security_sheet.add_cell(row_count,5,headers['cache-control'])
       security_sheet.add_cell(row_count,6,headers['content-security-policy'])
+      security_sheet.add_cell(row_count,7,headers['x-frame-options'])
       row_count = row_count + 1
     end
     workbook.write(report_file_base + '_headers.xlsx')

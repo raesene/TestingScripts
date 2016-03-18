@@ -184,6 +184,7 @@ class IcmpRecon
     @echo_hosts = Array.new
     @timestamp_hosts = Array.new
     @address_mask_hosts = Array.new
+    @all_hosts = Array.new
 
   end
 
@@ -213,6 +214,7 @@ class IcmpRecon
         @address_mask_hosts << host.addr
       end
     end
+    @all_hosts = (@address_mask_hosts + @echo_hosts + @timestamp_hosts).uniq
   end
 
   def csv_report
@@ -220,24 +222,12 @@ class IcmpRecon
     report.puts "ICMP Reconnaissance Report"
     report.puts "-------------------------"
     report.puts "Address, Echo Response?, Timestamp Response?, Netmask Response?"
-    @ip_address_ranges.each do |raw_range|
-      next unless raw_range
-      begin
-        range = IPAddress.parse(raw_range)
-      rescue ArgumentError => e.to_s
-        @log.debug('had a problem trying to parse' + raw_range)
-        @log.debug('the problem was ' + e.to_s)
-        puts 'not so good al'
-        puts e
-        next
-      end
-      range.each do |address|
-        address = address.to_s
-        report.print address + ","
-        @echo_hosts.include?(address) ? report.print("y,") : report.print("n,")
-        @timestamp_hosts.include?(address) ? report.print("y,") : report.print("n,")
-        @address_mask_hosts.include?(address) ? report.puts("y") : report.puts("n")
-      end
+
+    @all_hosts.each do |address|
+      report.print address + ","
+      @echo_hosts.include?(address) ? report.print("y,") : report.print("n,")
+      @timestamp_hosts.include?(address) ? report.print("y,") : report.print("n,")
+      @address_mask_hosts.include?(address) ? report.puts("y") : report.puts("n")
     end
   end
 
@@ -263,25 +253,15 @@ class IcmpRecon
               doc.th "ICMP Netmask Response?"
             }
 
-            @ip_address_ranges.each do |raw_range|
-              range = IPAddress.parse(raw_range)
-              range.each do |address|
-                address = address.to_s
-                doc.tr{
-                  doc.td{
-                    doc.b address
-                  }
-
-                  @echo_hosts.include?(address) ? doc.td("y", :bgcolor => "CC0033"):doc.td("n", :bgcolor => "33CC33")
-
-                  @timestamp_hosts.include?(address) ? doc.td("y", :bgcolor => "CC0033"):doc.td("n", :bgcolor => "33CC33")
-
-                  @address_mask_hosts.include?(address) ? doc.td("y", :bgcolor => "CC0033"):doc.td("n", :bgcolor => "33CC33")
-
-
+            @all_hosts.each do |address|
+              doc.tr{
+                doc.td{
+                  doc.b address
                 }
-
-              end
+                @echo_hosts.include?(address) ? doc.td("y", :bgcolor => "CC0033"):doc.td("n", :bgcolor => "33CC33")
+                @timestamp_hosts.include?(address) ? doc.td("y", :bgcolor => "CC0033"):doc.td("n", :bgcolor => "33CC33")
+                @address_mask_hosts.include?(address) ? doc.td("y", :bgcolor => "CC0033"):doc.td("n", :bgcolor => "33CC33")
+                }
             end
           }
         }
@@ -294,23 +274,18 @@ class IcmpRecon
   def rtf_report
     require 'rtf'
     document = RTF::Document.new(RTF::Font.new(RTF::Font::ROMAN, 'Arial'))
-    @ip_address_ranges.each do |raw_range|
-      range = IPAddress.parse(raw_range)
+    @all_hosts.each do |address|
       table = document.table(range.size + 1,4,2000,2000,2000,2000)
       table[0][0] << 'IP Address'
       table[0][1] << 'ICMP Echo Response?'
       table[0][2] << 'ICMP Timestamp Response?'
       table[0][3] << 'ICMP Netmask Response?'
       row = 1
-      range.each do |address|
-        address = address.to_s
-        table[row][0] << address
-        @echo_hosts.include?(address) ? table[row][1] << 'Y': table[row][1] << 'N'
-        @timestamp_hosts.include?(address) ? table[row][2] << 'Y': table[row][2] << 'N'
-        @address_mask_hosts.include?(address) ? table[row][3] << 'Y': table[row][3] << 'N'
-        row = row + 1
-      end
-
+      table[row][0] << address
+      @echo_hosts.include?(address) ? table[row][1] << 'Y': table[row][1] << 'N'
+      @timestamp_hosts.include?(address) ? table[row][2] << 'Y': table[row][2] << 'N'
+      @address_mask_hosts.include?(address) ? table[row][3] << 'Y': table[row][3] << 'N'
+      row = row + 1
     end
     @report_file = File.open(@options.report_file_base + '.rtf','w+') do |file|
       file.write(document.to_rtf)
