@@ -130,12 +130,12 @@ class SslyzeAutoAnalyzer
     @scan_files.each do |file|      
       file_content = File.open(file,'r').read
       doc = Nokogiri::XML(file_content)
-      if doc.root['title'] == "SSLyze Scan Results"
+      begin
+        doc.root['title'] == "SSLyze Scan Results"
         @log.debug("Got a sslyze file called #{file}, processing")
         parse_file(doc)
-      else
+      rescue Exception => e
         @log.warn("Invalid format for file : #{file}, skipping")
-        next
       end
     end
   end

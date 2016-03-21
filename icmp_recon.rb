@@ -18,7 +18,7 @@
 # == ToDo
 #
 # * Get RTF report working with the file option
-# *
+# * Add back in the dead hosts rather than just ones that respond. (change how @all_hosts is calculated.)
 # *
 #
 # == Author
