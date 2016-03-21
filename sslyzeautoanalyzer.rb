@@ -197,6 +197,36 @@ class SslyzeAutoAnalyzer
 
       @host_results[address]['ccs_vuln'] = host.xpath('openssl_ccs/openSslCcsInjection')[0]['isVulnerable']
 
+      ##Cipher Vulns
+      protocols = ['sslv2','sslv3','tlsv1','tlsv1_1','tlsv1_2']
+      @host_results[address]['anonymous_ciphers'] = Array.new
+      @host_results[address]['weak_ciphers'] = Array.new
+      @host_results[address]['rc4_ciphers'] = Array.new
+      @host_results[address]['weak_dh_ciphers'] = Array.new
+      @host_results[address]['weak_key_exchange'] = Array.new
+      @host_results[address]['forward_secrecy_unsupported'] = Array.new
+
+      protocols.each do |protocol|
+        ciphers = host.xpath(protocol+'/acceptedCipherSuites/cipherSuite')
+        @log.debug("got " + ciphers.length.to_s + " ciphers to do")
+        ciphers.each do |cipher|
+          if cipher['anonymous'] == true
+            @host_results[address]['anonymous_ciphers'] << protocol + ', ' + cipher['name']
+          end
+
+          if cipher['keySize'].to_i < 128
+            @host_results[address]['weak_ciphers'] << protocol + ', ' + cipher['name']
+          end
+
+          if cipher['name'] =~ /RC4/
+            @host_results[address]['rc4_ciphers'] << protocpl + ', ' + cipher['name']
+          end
+
+
+        end
+      end
+
+
     end
   end
 
@@ -258,9 +288,9 @@ class SslyzeAutoAnalyzer
       cert_sheet.add_cell(row_count,9,"Not Tested")
       cert_sheet.add_cell(row_count,10,vulns['sha1_signed'])
       cipher_sheet.add_cell(row_count,0,host)
-      cipher_sheet.add_cell(row_count,1,"Not Tested")
-      cipher_sheet.add_cell(row_count,2,"Not Tested")
-      cipher_sheet.add_cell(row_count,3,"Not Tested")
+      cipher_sheet.add_cell(row_count,1,vulns['anonymous_ciphers'].join("\n"))
+      cipher_sheet.add_cell(row_count,2,vulns['weak_ciphers'].join("\n"))
+      cipher_sheet.add_cell(row_count,3,vulns['rc4_ciphers'].join("\n"))
       cipher_sheet.add_cell(row_count,4,"Not Tested")
       cipher_sheet.add_cell(row_count,5,"Not Tested")
       cipher_sheet.add_cell(row_count,6,"Not Tested")
