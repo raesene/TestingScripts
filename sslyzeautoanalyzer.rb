@@ -67,6 +67,7 @@ class SslyzeAutoAnalyzer
       require 'rubygems'
       require 'logger'      
       require 'nokogiri'
+      require 'date'
 
     rescue LoadError => e
       puts "Couldn't load one of the required gems (likely to be nokogiri)"
@@ -167,15 +168,38 @@ class SslyzeAutoAnalyzer
       if host.xpath('certinfo_basic/certificateValidation/hostnameValidation')[0]['certificateMatchesServerHostname'] == "False"
         @host_results[address]['hostname_mismatch'] = true
       end
+
+      host_names = Array.new
+      #Add Cert common name to list
+      host_names << host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('subject/commonName').inner_text
+      #Add Alt names to list
+      host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('extensions/X509v3SubjectAlternativeName/DNS/listEntry').each {|entry| host_names << entry.inner_text}
+      #Look for a wildcard cert.
+      if (host_names.grep /\*/).length > 0
+        @host_results[address]['wildcard_cert'] = true
+      end
+      #Look for  a cert which has a www. name and not the corresponding bare domain
+      if (host_names.grep /www/).length > 0
+        www_host = (host_names.grep /www/)[0]
+        bare_host = www_host.sub(/^www\./,'')
+        unless (host_names.grep /\*\.#{bare_host}/) || (host_names.grep /#{bare_host}/)
+          @host_results[address]['cert_no_www'] = true
+        end
+      end
+
       #Check Public Key Size
       @host_results[address]['public_key_size'] = host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('subjectPublicKeyInfo/publicKeySize').inner_text
 
-      if host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('subject/commonName').inner_text =~ /\*/
-        @host_results[address]['wildcard_cert'] = true
-      end
+      
       #Check for SHA-1 Signed Certificate is fine for leafs, intermediates are trickier
       @host_results[address]['sha1_signed'] = host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('signatureAlgorithm').inner_text
 
+      #Check for imminent cert expiry, closer than 90 days
+      expire_date = DateTime.parse(host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('validity/notAfter').inner_text)
+      #Check it's not already expired and that it's less than 90 days
+      if (expire_date - DateTime.now).to_i > 0 && (expire_date - DateTime.now).to_i < 90
+        @host_results[address]['cert_expiring_soon'] = true
+      end
 
       ## Protocol Issues
       @host_results[address]['sslv2_supported'] = host.xpath('sslv2')[0]['isProtocolSupported']
@@ -221,7 +245,7 @@ class SslyzeAutoAnalyzer
           end
 
           if cipher['name'] =~ /RC4/
-            @host_results[address]['rc4_ciphers'] << protocpl + ', ' + cipher['name']
+            @host_results[address]['rc4_ciphers'] << protocol + ', ' + cipher['name']
           end
 
           if (protocol == 'sslv3' || protocol == 'tlsv1') && cipher['name'] =~ /CBC/
@@ -252,29 +276,29 @@ class SslyzeAutoAnalyzer
     cert_sheet.add_cell(0,6,"Certificate Expiry Imminent?")
     cert_sheet.add_cell(0,7,"Public Key Size")
     cert_sheet.add_cell(0,8,"Wildcard Certificate?")
-    cert_sheet.add_cell(0,9,"Certificate Revoked?")
-    cert_sheet.add_cell(0,10,"Certificate Signature Algorithm")
+    #cert_sheet.add_cell(0,9,"Certificate Revoked?")
+    cert_sheet.add_cell(0,9,"Certificate Signature Algorithm")
 
     cipher_sheet = workbook.add_worksheet('Cipher Issues')
     cipher_sheet.add_cell(0,0,"Hostname/IP Address")
     cipher_sheet.add_cell(0,1,"Anonymous Ciphers Supported")
     cipher_sheet.add_cell(0,2,"Weak Ciphers Supported")
     cipher_sheet.add_cell(0,3,"RC4 Ciphers Supported")
-    cipher_sheet.add_cell(0,4,"Weak Diffie-hellman")
-    cipher_sheet.add_cell(0,5,"Weak RSA Key Exchange")
-    cipher_sheet.add_cell(0,6,"Forward Secrecy Unsupported")
+    #cipher_sheet.add_cell(0,4,"Weak Diffie-hellman")
+    #cipher_sheet.add_cell(0,5,"Weak RSA Key Exchange")
+    #cipher_sheet.add_cell(0,6,"Forward Secrecy Unsupported")
 
     protocol_sheet = workbook.add_worksheet('Protocol Issues')
     protocol_sheet.add_cell(0,0,"Hostname/IP Address")
     protocol_sheet.add_cell(0,1,"SSLv2 Supported")
     protocol_sheet.add_cell(0,2,"SSLv3 Supported")
-    protocol_sheet.add_cell(0,3,"Poodle over TLS")
-    protocol_sheet.add_cell(0,4,"No support for TLS above 1.0")
-    protocol_sheet.add_cell(0,5,"Client-Initiated Renogotiation DoS")
-    protocol_sheet.add_cell(0,6,"Insecure Renogotiation")
-    protocol_sheet.add_cell(0,7,"Compression Supported")
-    protocol_sheet.add_cell(0,8,"OpenSSL ChangeCipherSpec (CCS) Vulnerability")
-    protocol_sheet.add_cell(0,9,"BEAST")
+    #protocol_sheet.add_cell(0,3,"Poodle over TLS")
+    protocol_sheet.add_cell(0,3,"No support for TLS above 1.0")
+    protocol_sheet.add_cell(0,4,"Client-Initiated Renogotiation DoS")
+    protocol_sheet.add_cell(0,5,"Insecure Renogotiation")
+    protocol_sheet.add_cell(0,6,"Compression Supported")
+    protocol_sheet.add_cell(0,7,"OpenSSL ChangeCipherSpec (CCS) Vulnerability")
+    protocol_sheet.add_cell(0,8,"BEAST")
 
     row_count = 1
     @host_results.each do |host, vulns|
@@ -282,31 +306,31 @@ class SslyzeAutoAnalyzer
       cert_sheet.add_cell(row_count,1,vulns['self_signed'])
       cert_sheet.add_cell(row_count,2,vulns['untrusted_issuer'])
       cert_sheet.add_cell(row_count,3,vulns['hostname_mismatch'])
-      cert_sheet.add_cell(row_count,4,"Not Tested")
+      cert_sheet.add_cell(row_count,4,vulns['cert_no_www'])
       cert_sheet.add_cell(row_count,5,vulns['expired_cert'])
-      cert_sheet.add_cell(row_count,6,"Not Tested")
+      cert_sheet.add_cell(row_count,6,vulns['cert_expiring_soon'])
       cert_sheet.add_cell(row_count,7,vulns['public_key_size'])
       cert_sheet.add_cell(row_count,8,vulns['wildcard_cert'])
-      cert_sheet.add_cell(row_count,9,"Not Tested")
-      cert_sheet.add_cell(row_count,10,vulns['sha1_signed'])
+      #cert_sheet.add_cell(row_count,9,"Not Tested")
+      cert_sheet.add_cell(row_count,9,vulns['sha1_signed'])
       cipher_sheet.add_cell(row_count,0,host)
       cipher_sheet.add_cell(row_count,1,vulns['anonymous_ciphers'].join("\n"))
       cipher_sheet.add_cell(row_count,2,vulns['weak_ciphers'].join("\n"))
       cipher_sheet.add_cell(row_count,3,vulns['rc4_ciphers'].join("\n"))
-      cipher_sheet.add_cell(row_count,4,"Not Tested")
-      cipher_sheet.add_cell(row_count,5,"Not Tested")
-      cipher_sheet.add_cell(row_count,6,"Not Tested")
+      #cipher_sheet.add_cell(row_count,4,"Not Tested")
+      #cipher_sheet.add_cell(row_count,5,"Not Tested")
+      #cipher_sheet.add_cell(row_count,6,"Not Tested")
       protocol_sheet.add_cell(row_count,0,host)
       protocol_sheet.add_cell(row_count,1,vulns['sslv2_supported'])
       protocol_sheet.add_cell(row_count,2,vulns['sslv3_supported'])
       #POODLE over TLS , probably not worth specifically sorting this unless sslyze does
-      protocol_sheet.add_cell(row_count,3,"Not Tested")
-      protocol_sheet.add_cell(row_count,4,vulns['no_tls_v1_1_2'])
-      protocol_sheet.add_cell(row_count,5,vulns['client_renegotiation'])
-      protocol_sheet.add_cell(row_count,6,vulns['insecure_renegotiation'])
-      protocol_sheet.add_cell(row_count,7,vulns['compression'])
-      protocol_sheet.add_cell(row_count,8,vulns['ccs_vuln'])
-      protocol_sheet.add_cell(row_count,9,vulns['cbc_ciphers'].join("\n"))
+      #protocol_sheet.add_cell(row_count,3,"Not Tested")
+      protocol_sheet.add_cell(row_count,3,vulns['no_tls_v1_1_2'])
+      protocol_sheet.add_cell(row_count,4,vulns['client_renegotiation'])
+      protocol_sheet.add_cell(row_count,5,vulns['insecure_renegotiation'])
+      protocol_sheet.add_cell(row_count,6,vulns['compression'])
+      protocol_sheet.add_cell(row_count,7,vulns['ccs_vuln'])
+      protocol_sheet.add_cell(row_count,8,vulns['cbc_ciphers'].join("\n"))
 
 
       row_count = row_count + 1
