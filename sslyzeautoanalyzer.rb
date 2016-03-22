@@ -17,7 +17,7 @@
   #
   #TODO:
   # - File bug report where root CAs are getting tagged as intermediate stopping us checking SHA-1 (e.g. geotrust CA)
-  #
+  # - Figure out missing checks :- TLS POODLE
   # == Author
   # Author::  Rory McCune
   # Copyright:: Copyright (c) 2016 Rory Mccune
@@ -136,6 +136,7 @@ class SslyzeAutoAnalyzer
         parse_file(doc)
       rescue Exception => e
         @log.warn("Invalid format for file : #{file}, skipping")
+        @log.warn(e)
       end
     end
   end
@@ -205,6 +206,7 @@ class SslyzeAutoAnalyzer
       @host_results[address]['weak_dh_ciphers'] = Array.new
       @host_results[address]['weak_key_exchange'] = Array.new
       @host_results[address]['forward_secrecy_unsupported'] = Array.new
+      @host_results[address]['cbc_ciphers'] = Array.new
 
       protocols.each do |protocol|
         ciphers = host.xpath(protocol+'/acceptedCipherSuites/cipherSuite')
@@ -222,11 +224,11 @@ class SslyzeAutoAnalyzer
             @host_results[address]['rc4_ciphers'] << protocpl + ', ' + cipher['name']
           end
 
-
+          if (protocol == 'sslv3' || protocol == 'tlsv1') && cipher['name'] =~ /CBC/
+            @host_results[address]['cbc_ciphers'] << protocol + ', ' + cipher['name']
+          end
         end
       end
-
-
     end
   end
 
@@ -297,13 +299,14 @@ class SslyzeAutoAnalyzer
       protocol_sheet.add_cell(row_count,0,host)
       protocol_sheet.add_cell(row_count,1,vulns['sslv2_supported'])
       protocol_sheet.add_cell(row_count,2,vulns['sslv3_supported'])
+      #POODLE over TLS , probably not worth specifically sorting this unless sslyze does
       protocol_sheet.add_cell(row_count,3,"Not Tested")
       protocol_sheet.add_cell(row_count,4,vulns['no_tls_v1_1_2'])
       protocol_sheet.add_cell(row_count,5,vulns['client_renegotiation'])
       protocol_sheet.add_cell(row_count,6,vulns['insecure_renegotiation'])
       protocol_sheet.add_cell(row_count,7,vulns['compression'])
       protocol_sheet.add_cell(row_count,8,vulns['ccs_vuln'])
-      protocol_sheet.add_cell(row_count,9,"Not Tested")
+      protocol_sheet.add_cell(row_count,9,vulns['cbc_ciphers'].join("\n"))
 
 
       row_count = row_count + 1
