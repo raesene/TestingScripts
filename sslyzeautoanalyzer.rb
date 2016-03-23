@@ -156,19 +156,27 @@ class SslyzeAutoAnalyzer
       ##Certificate Issues
       #Check for Self-Signed Certificate
       if host.xpath('certinfo_basic/certificateValidation/pathValidation')[0]['validationResult'] == "self signed certificate"
-        @host_results[address]['self_signed'] = true
+        @host_results[address]['self_signed'] = "True"
+      else
+        @host_results[address]['self_signed'] = "False"
       end
       #Check for untrusted root
       if host.xpath('certinfo_basic/certificateValidation/pathValidation')[0]['validationResult'] == "unable to get local issuer certificate"
-        @host_results[address]['untrusted_issuer'] = true
+        @host_results[address]['untrusted_issuer'] = "True"
+      else
+        @host_results[address]['untrusted_issuer'] = "False"
       end
       #Check for Expired Cert
       if host.xpath('certinfo_basic/certificateValidation/pathValidation')[0]['validationResult'] == "certificate has expired"
-        @host_results[address]['expired_cert'] = true
+        @host_results[address]['expired_cert'] = "True"
+      else
+        @host_results[address]['expired_cert'] = "False"
       end
       #Check for hostname mismatch
       if host.xpath('certinfo_basic/certificateValidation/hostnameValidation')[0]['certificateMatchesServerHostname'] == "False"
-        @host_results[address]['hostname_mismatch'] = true
+        @host_results[address]['hostname_mismatch'] = "True"
+      else
+        @host_results[address]['hostname_mismatch'] = "False"
       end
 
       host_names = Array.new
@@ -178,14 +186,18 @@ class SslyzeAutoAnalyzer
       host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('extensions/X509v3SubjectAlternativeName/DNS/listEntry').each {|entry| host_names << entry.inner_text}
       #Look for a wildcard cert.
       if (host_names.grep /\*/).length > 0
-        @host_results[address]['wildcard_cert'] = true
+        @host_results[address]['wildcard_cert'] = "True"
+      else
+        @host_results[address]['wildcard_cert'] = "False"
       end
       #Look for  a cert which has a www. name and not the corresponding bare domain
       if (host_names.grep /www/).length > 0
         www_host = (host_names.grep /www/)[0]
         bare_host = www_host.sub(/^www\./,'')
         unless (host_names.grep /\*\.#{bare_host}/) || (host_names.grep /#{bare_host}/)
-          @host_results[address]['cert_no_www'] = true
+          @host_results[address]['cert_no_www'] = "True"
+        else
+          @host_results[address]['cert_no_www'] = "False"
         end
       end
 
@@ -200,14 +212,20 @@ class SslyzeAutoAnalyzer
       expire_date = DateTime.parse(host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('validity/notAfter').inner_text)
       #Check it's not already expired and that it's less than 90 days
       if (expire_date - DateTime.now).to_i > 0 && (expire_date - DateTime.now).to_i < 90
-        @host_results[address]['cert_expiring_soon'] = true
+        @host_results[address]['cert_expiring_soon'] = "True"
+      else
+        @host_results[address]['cert_expiring_soon'] = "False"
       end
 
       ## Protocol Issues
+      #defaults are false set to true if the case in the source file
+      @host_results[address]['sslv2_supported'] = "False"
       @host_results[address]['sslv2_supported'] = host.xpath('sslv2')[0]['isProtocolSupported']
+      @host_results[address]['sslv3_supported'] = "False"
       @host_results[address]['sslv3_supported'] = host.xpath('sslv3')[0]['isProtocolSupported']
-      
+      @host_results[address]['tlsv1_1_supported'] = "False"
       @host_results[address]['tlsv1_1_supported'] = host.xpath('tlsv1_1')[0]['isProtocolSupported']
+      @host_results[address]['tlsv1_2_supported'] = "False"
       @host_results[address]['tlsv1_2_supported'] = host.xpath('tlsv1_2')[0]['isProtocolSupported']
       if (host.xpath('tlsv1_1')[0]['isProtocolSupported'] == "False" && host.xpath('tlsv1_2')[0]['isProtocolSupported'] == "False")
         @host_results[address]['no_tls_v1_1_2'] = "True"
@@ -222,6 +240,7 @@ class SslyzeAutoAnalyzer
         @host_results[address]['insecure_renegotiation'] = "False"
       end
 
+      @host_results[address]['ccs_vuln'] = "True"
       @host_results[address]['ccs_vuln'] = host.xpath('openssl_ccs/openSslCcsInjection')[0]['isVulnerable']
 
       ##Cipher Vulns
@@ -238,7 +257,7 @@ class SslyzeAutoAnalyzer
         ciphers = host.xpath(protocol+'/acceptedCipherSuites/cipherSuite')
         @log.debug("got " + ciphers.length.to_s + " ciphers to do")
         ciphers.each do |cipher|
-          if cipher['anonymous'] == true
+          if cipher['anonymous'] == "True"
             @host_results[address]['anonymous_ciphers'] << protocol + ', ' + cipher['name']
           end
 
@@ -276,8 +295,8 @@ class SslyzeAutoAnalyzer
     cert_sheet.add_cell(0,5,"Certificate without WWW?")
     cert_sheet.add_cell(0,6,"Expired Certificate?")
     cert_sheet.add_cell(0,7,"Certificate Expiry Imminent?")
-    cert_sheet.add_cell(0,8,"Public Key Size")
-    cert_sheet.add_cell(0,9,"Wildcard Certificate?")
+    cert_sheet.add_cell(0,8,"Wildcard Certificate?")
+    cert_sheet.add_cell(0,9,"Public Key Size")
     #cert_sheet.add_cell(0,9,"Certificate Revoked?")
     cert_sheet.add_cell(0,10,"Certificate Signature Algorithm")
 
@@ -314,10 +333,20 @@ class SslyzeAutoAnalyzer
       cert_sheet.add_cell(row_count,5,vulns['cert_no_www'])
       cert_sheet.add_cell(row_count,6,vulns['expired_cert'])
       cert_sheet.add_cell(row_count,7,vulns['cert_expiring_soon'])
-      cert_sheet.add_cell(row_count,8,vulns['public_key_size'])
-      cert_sheet.add_cell(row_count,9,vulns['wildcard_cert'])
+      cert_sheet.add_cell(row_count,8,vulns['wildcard_cert'])
+      cert_sheet.add_cell(row_count,9,vulns['public_key_size'])
       #cert_sheet.add_cell(row_count,9,"Not Tested")
       cert_sheet.add_cell(row_count,10,vulns['sha1_signed'])
+      #Apply Colours
+      col = 2
+      #number of cols to colour in
+      8.times do |i|
+        if cert_sheet.sheet_data[row_count][col + i].value == "True"
+          cert_sheet.sheet_data[row_count][col + i].change_fill('d4004b')
+        else
+          cert_sheet.sheet_data[row_count][col + i].change_fill('27ae60')
+        end
+      end
 
       cipher_sheet.add_cell(row_count,0,Resolv.getaddress(host))
       cipher_sheet.add_cell(row_count,1,host)
@@ -340,6 +369,14 @@ class SslyzeAutoAnalyzer
       protocol_sheet.add_cell(row_count,7,vulns['compression'])
       protocol_sheet.add_cell(row_count,8,vulns['ccs_vuln'])
       protocol_sheet.add_cell(row_count,9,vulns['cbc_ciphers'].join("\n"))
+      #Add the colours
+      7.times do |i|
+        if protocol_sheet.sheet_data[row_count][col + i].value == "True"
+          protocol_sheet.sheet_data[row_count][col + i].change_fill('d4004b')
+        else
+          protocol_sheet.sheet_data[row_count][col + i].change_fill('27ae60')
+        end
+      end
 
 
       row_count = row_count + 1
