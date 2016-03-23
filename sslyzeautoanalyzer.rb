@@ -282,6 +282,7 @@ class SslyzeAutoAnalyzer
       require 'rubyXL'
     rescue LoadError
       puts "Excel report needs the rubyXL gem"
+      exit
     end
 
     workbook = RubyXL::Workbook.new

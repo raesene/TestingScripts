@@ -81,6 +81,7 @@ class IcmpRecon
     @options.csv_report = false
     @options.html_report = false
     @options.rtf_report = false
+    @options.excel_report = false
     @options.bypass_root_check = false
 
     opts = OptionParser.new do |opts|
@@ -111,8 +112,12 @@ class IcmpRecon
         @options.rtf_report = true
       end
 
+      opts.on("--excelReport", "Create an Excel Report") do |excelrep|
+        @options.excel_report = true
+      end
+
       opts.on("--reportPrefix [REPREF]", "Prefix for report files") do |reppref|
-        @options.report_file_base = reppref
+        @options.report_file_base = reppref + "_icmp"
       end
 
       opts.on("-b", "Bypass root check") do |bypass|
@@ -150,10 +155,10 @@ class IcmpRecon
       exit
     end
 
-    unless @options.rtf_report || @options.csv_report || @options.html_report
+    unless @options.rtf_report || @options.csv_report || @options.html_report || @options.excel_report
       @log.debug('errored on reporting check')
       puts "No reporting specified"
-      puts " you need to use one or more of --csvReport, --rtfReport or --htmlReport"
+      puts " you need to use one or more of --csvReport, --rtfReport, --htmlReport or --excelReport"
       exit
     end
 
@@ -193,6 +198,7 @@ class IcmpRecon
     csv_report if @options.csv_report
     html_report if @options.html_report
     rtf_report if @options.rtf_report
+    excel_report if @options.excel_report
   end
 
   def icmp_scan
@@ -233,6 +239,55 @@ class IcmpRecon
       @timestamp_hosts.include?(address) ? report.print("y,") : report.print("n,")
       @address_mask_hosts.include?(address) ? report.puts("y") : report.puts("n")
     end
+  end
+
+  def excel_report
+    begin
+      require 'rubyXL'
+    rescue LoadError
+      puts "You need the rubyXL gem to run the excel report"
+      puts "try gem install rubyXL"
+      exit
+    end
+
+    workbook = RubyXL::Workbook.new
+    icmp_sheet = workbook.worksheets[0]
+    icmp_sheet.sheet_name = "ICMP Recon Results"
+    icmp_sheet.add_cell(0,0,"Address")
+    icmp_sheet.add_cell(0,1,"Echo Response")
+    icmp_sheet.add_cell(0,2,"Timestamp Response")
+    icmp_sheet.add_cell(0,3,"Netmask Response")
+
+    row_count = 1
+    @all_hosts.each do |address|
+      icmp_sheet.add_cell(row_count,0,address)
+      if @echo_hosts.include?(address)
+        icmp_sheet.add_cell(row_count,1,"Y")
+        icmp_sheet.sheet_data[row_count][1].change_fill('d4004b')
+      else
+        icmp_sheet.add_cell(row_count,1,"N")
+        icmp_sheet.sheet_data[row_count][1].change_fill('27ae60')
+      end
+
+      if @timestamp_hosts.include?(address)
+        icmp_sheet.add_cell(row_count,2,"Y")
+        icmp_sheet.sheet_data[row_count][2].change_fill('d4004b')
+      else
+        icmp_sheet.add_cell(row_count,2,"N")
+        icmp_sheet.sheet_data[row_count][2].change_fill('27ae60')
+      end
+
+      if @address_mask_hosts.include?(address)
+        icmp_sheet.add_cell(row_count,3,"Y")
+        icmp_sheet.sheet_data[row_count][3].change_fill('d4004b')
+      else
+        icmp_sheet.add_cell(row_count,3,"N")
+        icmp_sheet.sheet_data[row_count][3].change_fill('27ae60')
+      end
+      row_count = row_count + 1
+    end
+
+    workbook.write(@options.report_file_base + '.xlsx')
   end
 
   def html_report
