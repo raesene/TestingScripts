@@ -201,6 +201,10 @@ class IcmpRecon
       echo_parser.hosts("up") do |host|
         @echo_hosts << host.addr
       end
+      #Hack to get all hosts into the all hosts lists including ones that don't respond.
+      echo_parser.hosts do |host|
+        @all_hosts << host.addr
+      end
 
       timestamp_parser = Nmap::Parser.parsescan(@options.nmap_command, "-sP -PP #{range}")
 
@@ -214,7 +218,7 @@ class IcmpRecon
         @address_mask_hosts << host.addr
       end
     end
-    @all_hosts = (@address_mask_hosts + @echo_hosts + @timestamp_hosts).uniq
+    #@all_hosts = (@address_mask_hosts + @echo_hosts + @timestamp_hosts).uniq
   end
 
   def csv_report
