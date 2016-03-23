@@ -18,7 +18,6 @@
   #TODO:
   # - File bug report where root CAs are getting tagged as intermediate stopping us checking SHA-1 (e.g. geotrust CA)
   # - Figure out missing checks :- TLS POODLE
-  # - Catch error where there's a directory in the directory scanned for files to parse
   # == Author
   # Author::  Rory McCune
   # Copyright:: Copyright (c) 2016 Rory Mccune
@@ -120,7 +119,7 @@ class SslyzeAutoAnalyzer
   def scan_dirs
     @scan_files = Array.new
     Dir.entries(@scan_dir).each do |scan|
-      next if scan =~ /^\.{1,2}$/
+      next if File.directory?(@scan_dir + '/' + scan)
       @scan_files << @scan_dir + '/' + scan
     end
   end
@@ -133,12 +132,13 @@ class SslyzeAutoAnalyzer
     @scan_files.each do |file|      
       file_content = File.open(file,'r').read
       doc = Nokogiri::XML(file_content)
+      #Make sure that the file is actually XML
+      next unless doc.root
       begin
-        doc.root['title'] == "SSLyze Scan Results"
         @log.debug("Got a sslyze file called #{file}, processing")
         parse_file(doc)
       rescue Exception => e
-        @log.warn("Invalid format for file : #{file}, skipping")
+        @log.warn("We got an error parsing #{file}")
         @log.warn(e)
       end
     end
