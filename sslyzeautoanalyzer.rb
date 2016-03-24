@@ -18,6 +18,9 @@
   #TODO:
   # - File bug report where root CAs are getting tagged as intermediate stopping us checking SHA-1 (e.g. geotrust CA)
   # - Figure out missing checks :- TLS POODLE
+  # - Fix colouring on cert issues, it's getting public key size
+  # - consider colouring cert signature algo.
+  # - cert without www is missing a true when it gets reported.
   # == Author
   # Author::  Rory McCune
   # Copyright:: Copyright (c) 2016 Rory Mccune
