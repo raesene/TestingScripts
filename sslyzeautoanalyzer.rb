@@ -1,9 +1,4 @@
 #!/usr/bin/env ruby
-  # !!NB!!
-  # This tool isn't ready for use, so don't :)
-  #
-  #
-  #
   # == Synopsis
   # This script is designed to co-ordinate parsing of sslyze xml files and production of a concise set findings.
   #
@@ -18,9 +13,8 @@
   #TODO:
   # - File bug report where root CAs are getting tagged as intermediate stopping us checking SHA-1 (e.g. geotrust CA)
   # - Figure out missing checks :- TLS POODLE
-  # - Fix colouring on cert issues, it's getting public key size
   # - consider colouring cert signature algo.
-  # - cert without www is missing a true when it gets reported.
+  # - Make compression check less brittle.
   # == Author
   # Author::  Rory McCune
   # Copyright:: Copyright (c) 2016 Rory Mccune
@@ -202,6 +196,8 @@ class SslyzeAutoAnalyzer
         else
           @host_results[address]['cert_no_www'] = "False"
         end
+      else
+        @host_results[address]['cert_no_www'] = "False"
       end
 
       #Check Public Key Size
@@ -242,6 +238,9 @@ class SslyzeAutoAnalyzer
       else
         @host_results[address]['insecure_renegotiation'] = "False"
       end
+
+      #This is a bit brittle, change to include the possibility of multiple compression methods in future
+      @host_results[address]['compression'] = host.xpath('compression/compressionMethod')[0]['isSupported']
 
       @host_results[address]['ccs_vuln'] = "True"
       @host_results[address]['ccs_vuln'] = host.xpath('openssl_ccs/openSslCcsInjection')[0]['isVulnerable']
@@ -344,7 +343,7 @@ class SslyzeAutoAnalyzer
       #Apply Colours
       col = 2
       #number of cols to colour in
-      8.times do |i|
+      7.times do |i|
         if cert_sheet.sheet_data[row_count][col + i].value == "True"
           cert_sheet.sheet_data[row_count][col + i].change_fill('d4004b')
         else
