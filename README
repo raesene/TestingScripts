@@ -1,4 +1,8 @@
 Testing Scripts
 --
 
-A collection of more or less Random Scripts that I've knocked up during testing.  They're not pretty but they work for me, hopefully you may find something of interest when reading them :)
+A collection of scripts I've written to help automate various security testing tasks.  Most of them are focused on analyzing the (sometimes verbose) output of various security tools and condensing this into concise reports for analysis.
+
+There's some documentation at [https://github.com/raesene/testingscripts/wiki](https://github.com/raesene/testingscripts/wiki).
+
+
