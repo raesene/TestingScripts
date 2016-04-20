@@ -147,7 +147,7 @@ class SslyzeAutoAnalyzer
     hosts = doc.xpath('//document/results/target')
     @log.debug("Got #{hosts.length} hosts to review")
     hosts.each do |host|
-      address = host['host']
+      address = host['host'] + ':' + host['port']
       #Need to account for the poss. that this already exists?
       @host_results[address] = Hash.new
       ##Certificate Issues
@@ -328,7 +328,8 @@ class SslyzeAutoAnalyzer
 
     row_count = 1
     @host_results.each do |host, vulns|
-      cert_sheet.add_cell(row_count,0,Resolv.getaddress(host))
+      host_name = host.split(':')[0]
+      cert_sheet.add_cell(row_count,0,Resolv.getaddress(host_name))
       cert_sheet.add_cell(row_count,1,host)
       cert_sheet.add_cell(row_count,2,vulns['self_signed'])
       cert_sheet.add_cell(row_count,3,vulns['untrusted_issuer'])
@@ -351,7 +352,7 @@ class SslyzeAutoAnalyzer
         end
       end
 
-      cipher_sheet.add_cell(row_count,0,Resolv.getaddress(host))
+      cipher_sheet.add_cell(row_count,0,Resolv.getaddress(host_name))
       cipher_sheet.add_cell(row_count,1,host)
       cipher_sheet.add_cell(row_count,2,vulns['anonymous_ciphers'].join("\n"))
       cipher_sheet.add_cell(row_count,3,vulns['weak_ciphers'].join("\n"))
@@ -360,7 +361,7 @@ class SslyzeAutoAnalyzer
       #cipher_sheet.add_cell(row_count,5,"Not Tested")
       #cipher_sheet.add_cell(row_count,6,"Not Tested")
 
-      protocol_sheet.add_cell(row_count,0,Resolv.getaddress(host))
+      protocol_sheet.add_cell(row_count,0,Resolv.getaddress(host_name))
       protocol_sheet.add_cell(row_count,1,host)
       protocol_sheet.add_cell(row_count,2,vulns['sslv2_supported'])
       protocol_sheet.add_cell(row_count,3,vulns['sslv3_supported'])
