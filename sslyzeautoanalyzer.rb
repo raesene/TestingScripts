@@ -152,35 +152,59 @@ class SslyzeAutoAnalyzer
       @host_results[address] = Hash.new
       ##Certificate Issues
       #Check for Self-Signed Certificate
-      if host.xpath('certinfo_basic/certificateValidation/pathValidation')[0]['validationResult'] == "self signed certificate"
-        @host_results[address]['self_signed'] = "True"
-      else
-        @host_results[address]['self_signed'] = "False"
+      begin
+        if host.xpath('certinfo_basic/certificateValidation/pathValidation')[0]['validationResult'] == "self signed certificate"
+          @host_results[address]['self_signed'] = "True"
+        else
+          @host_results[address]['self_signed'] = "False"
+        end
+      rescue NoMethodError
+        @host_results[address]['self_signed'] = "Error"
       end
       #Check for untrusted root
-      if host.xpath('certinfo_basic/certificateValidation/pathValidation')[0]['validationResult'] == "unable to get local issuer certificate"
-        @host_results[address]['untrusted_issuer'] = "True"
-      else
-        @host_results[address]['untrusted_issuer'] = "False"
+      begin
+        if host.xpath('certinfo_basic/certificateValidation/pathValidation')[0]['validationResult'] == "unable to get local issuer certificate"
+          @host_results[address]['untrusted_issuer'] = "True"
+        else
+          @host_results[address]['untrusted_issuer'] = "False"
+        end
+      rescue NoMethodError
+        @host_results[address]['untrusted_issuer'] = "Error"
       end
       #Check for Expired Cert
-      if host.xpath('certinfo_basic/certificateValidation/pathValidation')[0]['validationResult'] == "certificate has expired"
-        @host_results[address]['expired_cert'] = "True"
-      else
-        @host_results[address]['expired_cert'] = "False"
+      begin
+        if host.xpath('certinfo_basic/certificateValidation/pathValidation')[0]['validationResult'] == "certificate has expired"
+          @host_results[address]['expired_cert'] = "True"
+        else
+          @host_results[address]['expired_cert'] = "False"
+        end
+      rescue NoMethodError
+        @host_results[address]['expired_cert'] = "Error"
       end
       #Check for hostname mismatch
-      if host.xpath('certinfo_basic/certificateValidation/hostnameValidation')[0]['certificateMatchesServerHostname'] == "False"
-        @host_results[address]['hostname_mismatch'] = "True"
-      else
-        @host_results[address]['hostname_mismatch'] = "False"
+      begin
+        if host.xpath('certinfo_basic/certificateValidation/hostnameValidation')[0]['certificateMatchesServerHostname'] == "False"
+          @host_results[address]['hostname_mismatch'] = "True"
+        else
+          @host_results[address]['hostname_mismatch'] = "False"
+        end
+      rescue NoMethodError
+        @host_results[address]['hostname_mismatch'] = "Error"
       end
 
       host_names = Array.new
       #Add Cert common name to list
-      host_names << host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('subject/commonName').inner_text
+      begin
+        host_names << host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('subject/commonName').inner_text
+      rescue NoMethodError
+        host_names << "Error"
+      end
       #Add Alt names to list
-      host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('extensions/X509v3SubjectAlternativeName/DNS/listEntry').each {|entry| host_names << entry.inner_text}
+      begin
+        host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('extensions/X509v3SubjectAlternativeName/DNS/listEntry').each {|entry| host_names << entry.inner_text}
+      rescue NoMethodError
+        host_names << "Error"
+      end
       #Look for a wildcard cert.
       if (host_names.grep /\*/).length > 0
         @host_results[address]['wildcard_cert'] = "True"
@@ -201,14 +225,26 @@ class SslyzeAutoAnalyzer
       end
 
       #Check Public Key Size
-      @host_results[address]['public_key_size'] = host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('subjectPublicKeyInfo/publicKeySize').inner_text
+      begin
+        @host_results[address]['public_key_size'] = host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('subjectPublicKeyInfo/publicKeySize').inner_text
+      rescue NoMethodError
+        @host_results[address]['public_key_size'] = "Error"
+      end
 
       
       #Check for SHA-1 Signed Certificate is fine for leafs, intermediates are trickier
-      @host_results[address]['sha1_signed'] = host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('signatureAlgorithm').inner_text
+      begin
+        @host_results[address]['sha1_signed'] = host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('signatureAlgorithm').inner_text
+      rescue NoMethodError
+        @host_results[address]['sha1_signed'] = "Error"
+      end
 
       #Check for imminent cert expiry, closer than 90 days
-      expire_date = DateTime.parse(host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('validity/notAfter').inner_text)
+      begin
+        expire_date = DateTime.parse(host.xpath('certinfo_basic/certificateChain/certificate[@position="leaf"]')[0].xpath('validity/notAfter').inner_text)
+      rescue NoMethodError
+        expire_date = DateTime.parse("1/1/2100")
+      end
       #Check it's not already expired and that it's less than 90 days
       if (expire_date - DateTime.now).to_i > 0 && (expire_date - DateTime.now).to_i < 90
         @host_results[address]['cert_expiring_soon'] = "True"
@@ -232,15 +268,32 @@ class SslyzeAutoAnalyzer
         @host_results[address]['no_tls_v1_1_2'] = "False"
       end
 
-      @host_results[address]['client_renegotiation'] = host.xpath('reneg/sessionRenegotiation')[0]['canBeClientInitiated']
-      unless host.xpath('reneg/sessionRenegotiation')[0]['isSecure'] == "True"
-        @host_results[address]['insecure_renegotiation'] = "True"
-      else
-        @host_results[address]['insecure_renegotiation'] = "False"
+      begin
+        if host.xpath('reneg/sessionRenegotiation')[0]['canBeClientInitiated']
+          @host_results[address]['client_renegotiation'] = "True"
+        else
+          @host_results[address]['client_renegotiation'] = "False"
+        end
+      rescue NoMethodError
+        @host_results[address]['client_renegotiation'] = "Error"
+      end
+      
+      begin
+        unless host.xpath('reneg/sessionRenegotiation')[0]['isSecure'] == "True"
+          @host_results[address]['insecure_renegotiation'] = "True"
+        else
+          @host_results[address]['insecure_renegotiation'] = "False"
+        end
+      rescue NoMethodError
+        @host_results[address]['insecure_renegotiation'] = "Error"
       end
 
       #This is a bit brittle, change to include the possibility of multiple compression methods in future
-      @host_results[address]['compression'] = host.xpath('compression/compressionMethod')[0]['isSupported']
+      begin
+        @host_results[address]['compression'] = host.xpath('compression/compressionMethod')[0]['isSupported']
+      rescue NoMethodError
+        @host_results[address]['compression'] = "Error"
+      end
 
       @host_results[address]['ccs_vuln'] = "True"
       @host_results[address]['ccs_vuln'] = host.xpath('openssl_ccs/openSslCcsInjection')[0]['isVulnerable']
