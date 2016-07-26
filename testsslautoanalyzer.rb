@@ -2,6 +2,7 @@
   # == Synopsis
   # This script is designed to co-ordinate parsing of testssl.sh JSON files and production of a concise set findings.
   #
+  # WARNING This isn't ready for use yet, don't do it, you'll be sorry!
   #
   # There are 2 modes of operation.
   #
@@ -176,21 +177,23 @@ class TestSSLAutoAnalyzer
     end
 
     #Hostname Mismatch
-    if results['cn']['finding'].downcase =~ /(?=.{1,255}$)[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?(?:\.[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?)*\.?/
-      hostname = results['cn']['finding'].slice(/(?=.{1,255}$)[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?(?:\.[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?)*\.?/)
-      unless host_names.eql?(hostname)
-        @host_results[address]['hostname_mismatch'] = true
-      else
-        @host_results[address]['hostname_mismatch'] = false
-      end
-    end
+    #if results['cn']['finding'].downcase =~ /(?=.{1,255}$)[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?(?:\.[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?)*\.?/
+    #  hostname = results['cn']['finding'].slice(/(?=.{1,255}$)[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?(?:\.[0-9A-Za-z](?:(?:[0-9A-Za-z]|-){0,61}[0-9A-Za-z])?)*\.?/)
+    #  unless host_names.eql?(hostname)
+    #    @host_results[address]['hostname_mismatch'] = true
+    #  else
+    #    @host_results[address]['hostname_mismatch'] = false
+    #  end
+    #end
 
+    @host_results[address]['hostname_mismatch'] = "Manual check needed"
+    @host_results[address]['cert_no_www'] = "Manual check needed"
     #Cert No WWW
-    if results['trust']['finding'].downcase =~ //
-      @host_results[address]['cert_no_www'] = true
-    else
-      @host_results[address]['cert_no_www'] = false
-    end
+    #if results['trust']['finding'].downcase =~ //
+    #  @host_results[address]['cert_no_www'] = true
+    #else
+    #  @host_results[address]['cert_no_www'] = false
+    #end
 
     #Expiration
     if results['expiration']['severity'] != "OK"
@@ -214,8 +217,8 @@ class TestSSLAutoAnalyzer
     end
 
 
-    #Public Key Size
-    if results['key_size']['severity'] == "OK" || results['key_size']['severity'] == "WARN"
+    #Public Key Size INFO is passed for 2048 bit key
+    if results['key_size']['severity'] == "INFO" 
       @host_results[address]['public_key_size'] = false
     else
       @host_results[address]['public_key_size'] = true
@@ -251,6 +254,27 @@ class TestSSLAutoAnalyzer
       @host_results[address]['rc4_ciphers'] = false
     else
       @host_results[address]['rc4_ciphers'] = true
+    end
+
+    #Weak Diffie Hellman
+    if results['logjam']['severity'] == "OK"
+      @host_results[address]['weak_dh'] = false
+    else
+      @host_results[address]['weak_dh'] = true
+    end
+
+    #Weak RSA
+    if results['freak']['severity'] == "OK"
+      @host_results[address]['weak_rsa'] = false
+    else
+      @host_results[address]['weak_rsa'] = true
+    end
+
+    #No PFS
+    if results['pfs']['severity'] == "OK"
+      @host_results[address]['no_pfs'] = false
+    else
+      @host_results[address]['no_pfs'] = true
     end
 
     #SSLv2
@@ -304,7 +328,7 @@ class TestSSLAutoAnalyzer
     if results['beast']['severity'] == "OK"
       @host_results[address]['beast'] = false
     else
-      @host_results[address]['beast'] = false
+      @host_results[address]['beast'] = true
     end
 
   end
@@ -339,9 +363,9 @@ class TestSSLAutoAnalyzer
     cipher_sheet.add_cell(0,2,"Anonymous Ciphers Supported")
     cipher_sheet.add_cell(0,3,"Weak Ciphers Supported")
     cipher_sheet.add_cell(0,4,"RC4 Ciphers Supported")
-    #cipher_sheet.add_cell(0,4,"Weak Diffie-hellman")
-    #cipher_sheet.add_cell(0,5,"Weak RSA Key Exchange")
-    #cipher_sheet.add_cell(0,6,"Forward Secrecy Unsupported")
+    cipher_sheet.add_cell(0,5,"Weak Diffie-hellman")
+    cipher_sheet.add_cell(0,6,"Weak RSA Key Exchange")
+    cipher_sheet.add_cell(0,7,"Forward Secrecy Unsupported")
 
     protocol_sheet = workbook.add_worksheet('Protocol Issues')
     protocol_sheet.add_cell(0,0,"IP Address")
@@ -374,10 +398,10 @@ class TestSSLAutoAnalyzer
       #Apply Colours
       col = 2
       #number of cols to colour in
-      7.times do |i|
+      9.times do |i|
         if cert_sheet.sheet_data[row_count][col + i].value == true
           cert_sheet.sheet_data[row_count][col + i].change_fill('d4004b')
-        else
+        elsif cert_sheet.sheet_data[row_count][col + i].value == false
           cert_sheet.sheet_data[row_count][col + i].change_fill('27ae60')
         end
       end
@@ -387,9 +411,18 @@ class TestSSLAutoAnalyzer
       cipher_sheet.add_cell(row_count,2,vulns['anonymous_ciphers'])
       cipher_sheet.add_cell(row_count,3,vulns['weak_ciphers'])
       cipher_sheet.add_cell(row_count,4,vulns['rc4_ciphers'])
-      #cipher_sheet.add_cell(row_count,4,"Not Tested")
-      #cipher_sheet.add_cell(row_count,5,"Not Tested")
-      #cipher_sheet.add_cell(row_count,6,"Not Tested")
+      cipher_sheet.add_cell(row_count,5,vulns['weak_dh'])
+      cipher_sheet.add_cell(row_count,6,vulns['weak_rsa'])
+      cipher_sheet.add_cell(row_count,7,vulns['no_pfs'])
+
+      col = 2
+      6.times do |i|
+        if cipher_sheet.sheet_data[row_count][col + i].value == true
+          cipher_sheet.sheet_data[row_count][col + i].change_fill('d4004b')
+        else
+          cipher_sheet.sheet_data[row_count][col + i].change_fill('27ae60')
+        end
+      end
 
       protocol_sheet.add_cell(row_count,0,host.split('/')[1])
       protocol_sheet.add_cell(row_count,1,host.split('/')[0])
@@ -404,7 +437,7 @@ class TestSSLAutoAnalyzer
       protocol_sheet.add_cell(row_count,8,vulns['ccs_vuln'])
       protocol_sheet.add_cell(row_count,9,vulns['beast'])
       #Add the colours
-      7.times do |i|
+      8.times do |i|
         if protocol_sheet.sheet_data[row_count][col + i].value == true
           protocol_sheet.sheet_data[row_count][col + i].change_fill('d4004b')
         else
