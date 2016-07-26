@@ -292,9 +292,9 @@ class TestSSLAutoAnalyzer
     end
 
     #TLSv1 (there should be a better way to check this)
-    if results['tls1']['severity'] == "OK" &&
+    if results['tls1']['severity'] == "INFO" &&
       (results['tls1_1']['severity'] != "INFO" &&
-      results['tls1_2']['severity'] !="INFO")
+      results['tls1_2']['severity'] !="OK")
       @host_results[address]['no_tls_v1_1_2'] = true
     else
       @host_results[address]['no_tls_v1_1_2'] = false
