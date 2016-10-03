@@ -148,6 +148,7 @@ class TestSSLAutoAnalyzer
   def parse_file(doc)
     address = doc[0]['ip']
     @host_results[address] = Hash.new
+    
 
 
     #testSSL JSON files are an array of elements, it's nicer for this to be able to key off a hash of the id
@@ -161,16 +162,17 @@ class TestSSLAutoAnalyzer
     host_names << sans.split(' ')
     host_names << address.split('/')[0]
 
+    @host_results[address]['port'] = results['service']['port']
 
     #Self Signed Certificate Checks
-    if results['trust']['finding'].downcase =~ /self signed/
+    if results['chain_of_trust']['finding'].downcase =~ /self signed/
       @host_results[address]['self_signed'] = true
     else
       @host_results[address]['self_signed'] = false
     end
 
     #Untrusted Issuer
-    if results['trust']['finding'].downcase =~ /chain incomplete/
+    if results['chain_of_trust']['finding'].downcase =~ /all certificate trust checks failed/
       @host_results[address]['untrusted_issuer'] = true
     else
       @host_results[address]['untrusted_issuer'] = false
@@ -313,10 +315,15 @@ class TestSSLAutoAnalyzer
       @host_results[address]['insecure_renegotiation'] = true
     end
 
-    if results['breach']['severity'] == "OK"
+    #Need to wrap this as not all output has this issue present in the file.
+    begin
+      if results['breach']['severity'] == "OK"
+        @host_results[address]['compression'] = false
+      else
+        @host_results[address]['compression'] = true
+      end
+    rescue NoMethodError
       @host_results[address]['compression'] = false
-    else
-      @host_results[address]['compression'] = true
     end
 
     if results['ccs']['severity'] == "OK"
@@ -346,57 +353,61 @@ class TestSSLAutoAnalyzer
     cert_sheet.sheet_name = "Certificate Issues"
     cert_sheet.add_cell(0,0,"IP Address")
     cert_sheet.add_cell(0,1,"Hostname")
-    cert_sheet.add_cell(0,2,"Self Signed Certificate?")
-    cert_sheet.add_cell(0,3,"Untrusted Issuer?")
-    cert_sheet.add_cell(0,4,"Subject Mismatch with Hostname?")
-    cert_sheet.add_cell(0,5,"Certificate without WWW?")
-    cert_sheet.add_cell(0,6,"Expired Certificate?")
-    cert_sheet.add_cell(0,7,"Certificate Expiry Imminent?")
-    cert_sheet.add_cell(0,8,"Wildcard Certificate?")
-    cert_sheet.add_cell(0,9,"Small Public Key")
+    cert_sheet.add_cell(0,2,"port")
+    cert_sheet.add_cell(0,3,"Self Signed Certificate?")
+    cert_sheet.add_cell(0,4,"Untrusted Issuer?")
+    cert_sheet.add_cell(0,5,"Subject Mismatch with Hostname?")
+    cert_sheet.add_cell(0,6,"Certificate without WWW?")
+    cert_sheet.add_cell(0,7,"Expired Certificate?")
+    cert_sheet.add_cell(0,8,"Certificate Expiry Imminent?")
+    cert_sheet.add_cell(0,9,"Wildcard Certificate?")
+    cert_sheet.add_cell(0,10,"Small Public Key")
     #cert_sheet.add_cell(0,9,"Certificate Revoked?")
-    cert_sheet.add_cell(0,10,"Certificate Signature SHA-1")
+    cert_sheet.add_cell(0,11,"Certificate Signature SHA-1")
 
     cipher_sheet = workbook.add_worksheet('Cipher Issues')
     cipher_sheet.add_cell(0,0,"IP Address")
     cipher_sheet.add_cell(0,1,"Hostname")
-    cipher_sheet.add_cell(0,2,"Anonymous Ciphers Supported")
-    cipher_sheet.add_cell(0,3,"Weak Ciphers Supported")
-    cipher_sheet.add_cell(0,4,"RC4 Ciphers Supported")
-    cipher_sheet.add_cell(0,5,"Weak Diffie-hellman")
-    cipher_sheet.add_cell(0,6,"Weak RSA Key Exchange")
-    cipher_sheet.add_cell(0,7,"Forward Secrecy Unsupported")
+    cipher_sheet.add_cell(0,2,"port")
+    cipher_sheet.add_cell(0,3,"Anonymous Ciphers Supported")
+    cipher_sheet.add_cell(0,4,"Weak Ciphers Supported")
+    cipher_sheet.add_cell(0,5,"RC4 Ciphers Supported")
+    cipher_sheet.add_cell(0,6,"Weak Diffie-hellman")
+    cipher_sheet.add_cell(0,7,"Weak RSA Key Exchange")
+    cipher_sheet.add_cell(0,8,"Forward Secrecy Unsupported")
 
     protocol_sheet = workbook.add_worksheet('Protocol Issues')
     protocol_sheet.add_cell(0,0,"IP Address")
     protocol_sheet.add_cell(0,1,"Hostname")
-    protocol_sheet.add_cell(0,2,"SSLv2 Supported")
-    protocol_sheet.add_cell(0,3,"SSLv3 Supported")
+    protocol_sheet.add_cell(0,2,"port")
+    protocol_sheet.add_cell(0,3,"SSLv2 Supported")
+    protocol_sheet.add_cell(0,4,"SSLv3 Supported")
     #protocol_sheet.add_cell(0,3,"Poodle over TLS")
-    protocol_sheet.add_cell(0,4,"No support for TLS above 1.0")
-    protocol_sheet.add_cell(0,5,"Client-Initiated Renogotiation DoS")
-    protocol_sheet.add_cell(0,6,"Insecure Renogotiation")
-    protocol_sheet.add_cell(0,7,"Compression Supported")
-    protocol_sheet.add_cell(0,8,"OpenSSL ChangeCipherSpec (CCS) Vulnerability")
-    protocol_sheet.add_cell(0,9,"BEAST")
+    protocol_sheet.add_cell(0,5,"No support for TLS above 1.0")
+    protocol_sheet.add_cell(0,6,"Client-Initiated Renogotiation DoS")
+    protocol_sheet.add_cell(0,7,"Insecure Renogotiation")
+    protocol_sheet.add_cell(0,8,"Compression Supported")
+    protocol_sheet.add_cell(0,9,"OpenSSL ChangeCipherSpec (CCS) Vulnerability")
+    protocol_sheet.add_cell(0,10,"BEAST")
 
     row_count = 1
     @host_results.each do |host, vulns|
       host_name = host.split(':')[0]
       cert_sheet.add_cell(row_count,0,host.split('/')[1])
       cert_sheet.add_cell(row_count,1,host.split('/')[0])
-      cert_sheet.add_cell(row_count,2,vulns['self_signed'])
-      cert_sheet.add_cell(row_count,3,vulns['untrusted_issuer'])
-      cert_sheet.add_cell(row_count,4,vulns['hostname_mismatch'])
-      cert_sheet.add_cell(row_count,5,vulns['cert_no_www'])
-      cert_sheet.add_cell(row_count,6,vulns['expired_cert'])
-      cert_sheet.add_cell(row_count,7,vulns['cert_expiring_soon'])
-      cert_sheet.add_cell(row_count,8,vulns['wildcard_cert'])
-      cert_sheet.add_cell(row_count,9,vulns['public_key_size'])
+      cert_sheet.add_cell(row_count,2,vulns['port'])
+      cert_sheet.add_cell(row_count,3,vulns['self_signed'])
+      cert_sheet.add_cell(row_count,4,vulns['untrusted_issuer'])
+      cert_sheet.add_cell(row_count,5,vulns['hostname_mismatch'])
+      cert_sheet.add_cell(row_count,6,vulns['cert_no_www'])
+      cert_sheet.add_cell(row_count,7,vulns['expired_cert'])
+      cert_sheet.add_cell(row_count,8,vulns['cert_expiring_soon'])
+      cert_sheet.add_cell(row_count,9,vulns['wildcard_cert'])
+      cert_sheet.add_cell(row_count,10,vulns['public_key_size'])
       #cert_sheet.add_cell(row_count,9,"Not Tested")
-      cert_sheet.add_cell(row_count,10,vulns['sha1_signed'])
+      cert_sheet.add_cell(row_count,11,vulns['sha1_signed'])
       #Apply Colours
-      col = 2
+      col = 3
       #number of cols to colour in
       9.times do |i|
         if cert_sheet.sheet_data[row_count][col + i].value == true
@@ -408,14 +419,15 @@ class TestSSLAutoAnalyzer
 
       cipher_sheet.add_cell(row_count,0,host.split('/')[1])
       cipher_sheet.add_cell(row_count,1,host.split('/')[0])
-      cipher_sheet.add_cell(row_count,2,vulns['anonymous_ciphers'])
-      cipher_sheet.add_cell(row_count,3,vulns['weak_ciphers'])
-      cipher_sheet.add_cell(row_count,4,vulns['rc4_ciphers'])
-      cipher_sheet.add_cell(row_count,5,vulns['weak_dh'])
-      cipher_sheet.add_cell(row_count,6,vulns['weak_rsa'])
-      cipher_sheet.add_cell(row_count,7,vulns['no_pfs'])
+      cipher_sheet.add_cell(row_count,2,vulns['port'])
+      cipher_sheet.add_cell(row_count,3,vulns['anonymous_ciphers'])
+      cipher_sheet.add_cell(row_count,4,vulns['weak_ciphers'])
+      cipher_sheet.add_cell(row_count,5,vulns['rc4_ciphers'])
+      cipher_sheet.add_cell(row_count,6,vulns['weak_dh'])
+      cipher_sheet.add_cell(row_count,7,vulns['weak_rsa'])
+      cipher_sheet.add_cell(row_count,8,vulns['no_pfs'])
 
-      col = 2
+      col = 3
       6.times do |i|
         if cipher_sheet.sheet_data[row_count][col + i].value == true
           cipher_sheet.sheet_data[row_count][col + i].change_fill('d4004b')
@@ -426,17 +438,19 @@ class TestSSLAutoAnalyzer
 
       protocol_sheet.add_cell(row_count,0,host.split('/')[1])
       protocol_sheet.add_cell(row_count,1,host.split('/')[0])
-      protocol_sheet.add_cell(row_count,2,vulns['sslv2_supported'])
-      protocol_sheet.add_cell(row_count,3,vulns['sslv3_supported'])
+      protocol_sheet.add_cell(row_count,2,vulns['port'])
+      protocol_sheet.add_cell(row_count,3,vulns['sslv2_supported'])
+      protocol_sheet.add_cell(row_count,4,vulns['sslv3_supported'])
       #POODLE over TLS , probably not worth specifically sorting this unless sslyze does
       #protocol_sheet.add_cell(row_count,3,"Not Tested")
-      protocol_sheet.add_cell(row_count,4,vulns['no_tls_v1_1_2'])
-      protocol_sheet.add_cell(row_count,5,vulns['client_renegotiation'])
-      protocol_sheet.add_cell(row_count,6,vulns['insecure_renegotiation'])
-      protocol_sheet.add_cell(row_count,7,vulns['compression'])
-      protocol_sheet.add_cell(row_count,8,vulns['ccs_vuln'])
-      protocol_sheet.add_cell(row_count,9,vulns['beast'])
+      protocol_sheet.add_cell(row_count,5,vulns['no_tls_v1_1_2'])
+      protocol_sheet.add_cell(row_count,6,vulns['client_renegotiation'])
+      protocol_sheet.add_cell(row_count,7,vulns['insecure_renegotiation'])
+      protocol_sheet.add_cell(row_count,8,vulns['compression'])
+      protocol_sheet.add_cell(row_count,9,vulns['ccs_vuln'])
+      protocol_sheet.add_cell(row_count,10,vulns['beast'])
       #Add the colours
+      col = 3
       8.times do |i|
         if protocol_sheet.sheet_data[row_count][col + i].value == true
           protocol_sheet.sheet_data[row_count][col + i].change_fill('d4004b')

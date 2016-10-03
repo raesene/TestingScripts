@@ -135,6 +135,7 @@ class RaccessChecker
     if @options.debug
       @http = Net::HTTP::Proxy(PROXY_SERVER,PROXY_PORT).new(@options.host,@options.port)
       @https = Net::HTTP::Proxy(PROXY_SERVER,PROXY_PORT).new(@options.host,@options.port)
+      puts 'doing debug mode'
     else
       @http = Net::HTTP.new(@options.host,@options.port)
       @https = Net::HTTP.new(@options.host,@options.port)
