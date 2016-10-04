@@ -146,7 +146,7 @@ class TestSSLAutoAnalyzer
   #Parse the testssl.sh format file and populate the hashes for the report
   #Remember one file only ever contains one host
   def parse_file(doc)
-    address = doc[0]['ip']
+    address = doc[0]['ip'] + ':' + doc[0]['port']
     @host_results[address] = Hash.new
     
 
@@ -393,7 +393,7 @@ class TestSSLAutoAnalyzer
     row_count = 1
     @host_results.each do |host, vulns|
       host_name = host.split(':')[0]
-      cert_sheet.add_cell(row_count,0,host.split('/')[1])
+      cert_sheet.add_cell(row_count,0,host.split('/')[1].split(':')[0])
       cert_sheet.add_cell(row_count,1,host.split('/')[0])
       cert_sheet.add_cell(row_count,2,vulns['port'])
       cert_sheet.add_cell(row_count,3,vulns['self_signed'])
@@ -417,7 +417,7 @@ class TestSSLAutoAnalyzer
         end
       end
 
-      cipher_sheet.add_cell(row_count,0,host.split('/')[1])
+      cipher_sheet.add_cell(row_count,0,host.split('/')[1].split(':')[0])
       cipher_sheet.add_cell(row_count,1,host.split('/')[0])
       cipher_sheet.add_cell(row_count,2,vulns['port'])
       cipher_sheet.add_cell(row_count,3,vulns['anonymous_ciphers'])
@@ -436,7 +436,7 @@ class TestSSLAutoAnalyzer
         end
       end
 
-      protocol_sheet.add_cell(row_count,0,host.split('/')[1])
+      protocol_sheet.add_cell(row_count,0,host.split('/')[1].split(':')[0])
       protocol_sheet.add_cell(row_count,1,host.split('/')[0])
       protocol_sheet.add_cell(row_count,2,vulns['port'])
       protocol_sheet.add_cell(row_count,3,vulns['sslv2_supported'])
