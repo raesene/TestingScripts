@@ -68,9 +68,55 @@ class KubernetesAnalyzer
     #TODO: Need to setup the other authentication options
     auth_options = { bearer_token: @options.token}
 
-    client = Kubeclient::Client.new @options.target_server, 'v1', auth_options: auth_options, ssl_options: ssl_options
-    puts client.get_pods.to_s
+    @client = Kubeclient::Client.new @options.target_server, 'v1', auth_options: auth_options, ssl_options: ssl_options
+    #Test response
+    begin
+      @client.get_pods.to_s
+    rescue
+      puts "whoops that didn't go well"
+      exit
+    end
+    test_api_server
   end
+
+  def test_api_server
+    pods = @client.get_pods
+    pods.each do |pod| 
+      #Ok this is a bit naive as a means of hitting the API server but hey it's a start
+      if pod['metadata']['name'] =~ /kube-apiserver/
+        @api_server = pod
+      end
+    end
+    
+    api_server_command_line = @api_server['spec']['containers'][0]['command']
+
+    #Check for Insecure Bind Address
+    if api_server_command_line.index{|line| line =~ /insecure-bind-address/}
+      puts "Server configured with Insecure bind address"
+    end
+
+    #Check for Allow Privileged
+    unless api_server_command_line.index{|line| line =~ /allow-privileged=false/}
+      puts "Server configured to allow Privileged Containers"
+    end
+
+    #Check for Anonymous Auth
+    unless api_server_command_line.index{|line| line =~ /anonymous-auth=false/}
+      puts "Server Configured to allow anonymous authentication"
+    end
+
+    #Check for Basic Auth
+    if api_server_command_line.index{|line| line =~ /basic-auth-file/}
+      puts "Server configured for Basic Authentication"
+    end
+
+    #Check for Static Token Auth
+    if api_server_command_line.index{|line| line =~ /token-auth-file/}
+      puts "Server configured for Token Based Authentication"
+    end
+
+  end
+
 
 end
 
