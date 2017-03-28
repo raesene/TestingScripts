@@ -102,33 +102,52 @@ class KubernetesAnalyzer
 
     #Check for Insecure Bind Address
     if api_server_command_line.index{|line| line =~ /insecure-bind-address/}
-      @results[target]['api_server']['Insecure Bind'] = "True"
-      puts "Server configured with Insecure bind address"
+      @results[target]['api_server']['Insecure Bind Address'] = "True"
+    end
+
+    #Check for Insecure Bind port
+    if api_server_command_line.index{|line| line =~ /insecure-bind-port/}
+      @results[target]['api_server']['Insecure Bind Port'] = "True"
     end
 
     #Check for Allow Privileged
     unless api_server_command_line.index{|line| line =~ /allow-privileged=false/}
       @results[target]['api_server']['Privileged Containers'] = "True"
-      puts "Server configured to allow Privileged Containers"
     end
 
     #Check for Anonymous Auth
     unless api_server_command_line.index{|line| line =~ /anonymous-auth=false/}
       @results[target]['api_server']['Anonymous Authentication'] = "True"
-      puts "Server Configured to allow anonymous authentication"
     end
 
     #Check for Basic Auth
     if api_server_command_line.index{|line| line =~ /basic-auth-file/}
       @results[target]['api_server']['Basic Authentication'] = "True"
-      puts "Server configured for Basic Authentication"
     end
 
     #Check for Static Token Auth
     if api_server_command_line.index{|line| line =~ /token-auth-file/}
       @results[target]['api_server']['Token Authentication'] = "True"
-      puts "Server configured for Token Based Authentication"
     end
+
+    #Check for Insecure Allow Any Token
+    if api_server_command_line.index{|line| line =~ /insecure-allow-any-token/}
+      @results[target]['api_server']['Insecure Allow Any Token'] = "True"
+    end
+
+    #Check to confirm that Kubelet HTTPS isn't set to false
+    if api_server_command_line.index{|line| line =~ /kubelet-https=false/}
+      @results[target]['api_server']['No Kublet HTTPS'] = "True"
+    end
+
+    #Check Secure Port isn't set to 0
+    if api_server_command_line.index{|line| line =~ /secure-port=0/}
+      @results[target]['api_server'][' Secure Port set to 0'] "True"
+    end
+
+
+
+
     @results[target]['evidence']['api_server'] = api_server_command_line
   end
 
