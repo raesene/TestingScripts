@@ -425,7 +425,7 @@ class SslyzeAutoAnalyzer
       protocol_sheet.add_cell(row_count,6,vulns['insecure_renegotiation'])
       protocol_sheet.add_cell(row_count,7,vulns['compression'])
       protocol_sheet.add_cell(row_count,8,vulns['ccs_vuln'])
-      protocol_sheet.add_cell(row_count,9,vulns['cbc_ciphers'].join("\n"))
+      protocol_sheet.add_cell(row_count,9,vulns['beast']
       #Add the colours
       7.times do |i|
         if protocol_sheet.sheet_data[row_count][col + i].value == "True"
