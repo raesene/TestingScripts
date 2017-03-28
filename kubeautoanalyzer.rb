@@ -139,11 +139,11 @@ class KubernetesAnalyzer
     @report_file.puts "\n\nAPI Server Results"
     @report_file.puts "----------------------\n\n"
     @results[@options.target_server]['api_server'].each do |test, result|
-      @report_file.puts '* ' + test + ' - ' + result
+      @report_file.puts '* ' + test + ' - **' + result + '**'
     end
     @report_file.puts "\n\nEvidence"
     @report_file.puts "---------------\n\n"
-    @report_file.puts @results[@options.target_server]['evidence']['api_server']
+    @report_file.puts '    ' + @results[@options.target_server]['evidence']['api_server'].to_s
     @report_file.close
   end
 
@@ -158,7 +158,56 @@ class KubernetesAnalyzer
     base_report = File.open(@report_file_name + '.txt','r').read
     puts base_report.length.to_s
     report = Kramdown::Document.new(base_report)
+    @html_report_file << '
+        <!DOCTYPE html>
+      <head>
+       <title> Kubernetes Analyzer Report</title>
+       <style>
+        body {
+          font: normal 14px auto "Trebuchet MS", Verdana, Arial, Helvetica, sans-serif;
+          color: #4f6b72;
+          background: #E6EAE9;
+        }
+        #kubernetes-analyzer {
+          font-weight: bold;
+          font-size: 48px;
+          font-family: "Trebuchet MS", Verdana, Arial, Helvetica, sans-serif;
+          color: #4f6b72;
+        }
+        #api-server-results {
+          font-weight: italic;
+          font-size: 36px;
+          font-family: "Trebuchet MS", Verdana, Arial, Helvetica, sans-serif;
+          color: #4f6b72;
+        }
+         th {
+         font: bold 11px "Trebuchet MS", Verdana, Arial, Helvetica, sans-serif;
+         color: #4f6b72;
+         border-right: 1px solid #C1DAD7;
+         border-bottom: 1px solid #C1DAD7;
+         border-top: 1px solid #C1DAD7;
+         letter-spacing: 2px;
+         text-transform: uppercase;
+         text-align: left;
+         padding: 6px 6px 6px 12px;
+         }
+      td {
+        border-right: 1px solid #C1DAD7;
+        border-bottom: 1px solid #C1DAD7;
+        background: #fff;
+        padding: 6px 6px 6px 12px;
+        color: #4f6b72;
+      }
+      td.alt {
+        background: #F5FAFA;
+        color: #797268;
+      }
+    </style>
+  </head>
+  <body>
+    '
     @html_report_file.puts report.to_html
+    @html_report_file.puts '</body></html>'
   end
 
 end
