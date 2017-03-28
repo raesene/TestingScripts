@@ -59,6 +59,7 @@ class KubernetesAnalyzer
 
     @report_file_name = @base_dir + '/' + @options.report_file
     @report_file = File.new(@report_file_name + '.txt','w+')
+    @html_report_file = File.new(@report_file_name + '.html','w+')
     @log.debug("New Report File created #{@report_file_name}")
   end
 
@@ -67,6 +68,8 @@ class KubernetesAnalyzer
     ssl_options = { verify_ssl: OpenSSL::SSL::VERIFY_NONE}
     #TODO: Need to setup the other authentication options
     auth_options = { bearer_token: @options.token}
+    @results = Hash.new
+    @results[@options.target_server] = Hash.new
 
     @client = Kubeclient::Client.new @options.target_server, 'v1', auth_options: auth_options, ssl_options: ssl_options
     #Test response
@@ -77,9 +80,16 @@ class KubernetesAnalyzer
       exit
     end
     test_api_server
+    report
+    if @options.html_report
+      html_report
+    end
   end
 
   def test_api_server
+    target = @options.target_server
+    @results[target]['api_server'] = Hash.new
+    @results[target]['evidence'] = Hash.new
     pods = @client.get_pods
     pods.each do |pod| 
       #Ok this is a bit naive as a means of hitting the API server but hey it's a start
@@ -92,31 +102,64 @@ class KubernetesAnalyzer
 
     #Check for Insecure Bind Address
     if api_server_command_line.index{|line| line =~ /insecure-bind-address/}
+      @results[target]['api_server']['Insecure Bind'] = "True"
       puts "Server configured with Insecure bind address"
     end
 
     #Check for Allow Privileged
     unless api_server_command_line.index{|line| line =~ /allow-privileged=false/}
+      @results[target]['api_server']['Privileged Containers'] = "True"
       puts "Server configured to allow Privileged Containers"
     end
 
     #Check for Anonymous Auth
     unless api_server_command_line.index{|line| line =~ /anonymous-auth=false/}
+      @results[target]['api_server']['Anonymous Authentication'] = "True"
       puts "Server Configured to allow anonymous authentication"
     end
 
     #Check for Basic Auth
     if api_server_command_line.index{|line| line =~ /basic-auth-file/}
+      @results[target]['api_server']['Basic Authentication'] = "True"
       puts "Server configured for Basic Authentication"
     end
 
     #Check for Static Token Auth
     if api_server_command_line.index{|line| line =~ /token-auth-file/}
+      @results[target]['api_server']['Token Authentication'] = "True"
       puts "Server configured for Token Based Authentication"
     end
-
+    @results[target]['evidence']['api_server'] = api_server_command_line
   end
 
+  def report
+    @report_file.puts "Kubernetes Analyzer"
+    @report_file.puts "===================\n\n"
+    @report_file.puts "**Server Reviewed** : #{@options.target_server}"
+    @report_file.puts "\n\nAPI Server Results"
+    @report_file.puts "----------------------\n\n"
+    @results[@options.target_server]['api_server'].each do |test, result|
+      @report_file.puts '* ' + test + ' - ' + result
+    end
+    @report_file.puts "\n\nEvidence"
+    @report_file.puts "---------------\n\n"
+    @report_file.puts @results[@options.target_server]['evidence']['api_server']
+    @report_file.close
+  end
+
+  def html_report
+    begin
+      require 'kramdown'
+    rescue LoadError
+      puts "HTML Report needs Kramdown"
+      puts "Try 'gem install kramdown'"
+      exit
+    end
+    base_report = File.open(@report_file_name + '.txt','r').read
+    puts base_report.length.to_s
+    report = Kramdown::Document.new(base_report)
+    @html_report_file.puts report.to_html
+  end
 
 end
 
@@ -147,6 +190,10 @@ if __FILE__ == $0
       
     opts.on("-r", "--report [REPORT]", "Report name") do |rep|
       options.report_file = 'nmap_' + rep
+    end
+
+    opts.on("--html_report", "Generate an HTML report as well as the txt one") do |html|
+      options.html_report = true
     end
 
     opts.on("--reportDirectory [REPORTDIRECTORY]", "Report Directory") do |rep|
