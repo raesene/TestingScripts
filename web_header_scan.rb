@@ -111,10 +111,11 @@ class HTTPScan
     info_sheet.sheet_name = "Server Information Headers"
     info_sheet.add_cell(0,0,"IP Address")
     info_sheet.add_cell(0,1,"Hostname")
-    info_sheet.add_cell(0,2,"Server")
-    info_sheet.add_cell(0,3,"X-Powered-By")
-    info_sheet.add_cell(0,4,"X-AspNet-Version")
-    info_sheet.add_cell(0,5,"X-AspNetmvc-Version")
+    info_sheet.add_cell(0,2,"port")
+    info_sheet.add_cell(0,3,"Server")
+    info_sheet.add_cell(0,4,"X-Powered-By")
+    info_sheet.add_cell(0,5,"X-AspNet-Version")
+    info_sheet.add_cell(0,6,"X-AspNetmvc-Version")
 
     security_sheet = workbook.add_worksheet('Security Headers')
 
@@ -122,12 +123,13 @@ class HTTPScan
 
     security_sheet.add_cell(0,0,"IP Address")
     security_sheet.add_cell(0,1,"Hostname")
-    security_sheet.add_cell(0,2,"X-XSS-Protection")
-    security_sheet.add_cell(0,3,"Strict-Transport-Security")
-    security_sheet.add_cell(0,4,"X-Content-Type-Options")
-    security_sheet.add_cell(0,5,"Cache-Control")
-    security_sheet.add_cell(0,6,"Content-Security-Policy")
-    security_sheet.add_cell(0,7,"X-Frame-Options")
+    security_sheet.add_cell(0,2,"port")
+    security_sheet.add_cell(0,3,"X-XSS-Protection")
+    security_sheet.add_cell(0,4,"Strict-Transport-Security")
+    security_sheet.add_cell(0,5,"X-Content-Type-Options")
+    security_sheet.add_cell(0,6,"Cache-Control")
+    security_sheet.add_cell(0,7,"Content-Security-Policy")
+    security_sheet.add_cell(0,8,"X-Frame-Options")
 
     row_count = 1
     @headers.each do |host, headers|
@@ -144,10 +146,11 @@ class HTTPScan
       else
         info_sheet.add_cell(row_count,1,url.host)
       end
-      info_sheet.add_cell(row_count,2,headers['server'])
-      info_sheet.add_cell(row_count,3,headers['x-powered-by'])
-      info_sheet.add_cell(row_count,4,headers['x-aspnet-version'])
-      info_sheet.add_cell(row_count,5,headers['x-aspnetmvc-version'])
+      info_sheet.add_cell(row_count,2,url.port.to_s)
+      info_sheet.add_cell(row_count,3,headers['server'])
+      info_sheet.add_cell(row_count,4,headers['x-powered-by'])
+      info_sheet.add_cell(row_count,5,headers['x-aspnet-version'])
+      info_sheet.add_cell(row_count,6,headers['x-aspnetmvc-version'])
 
       security_sheet.add_cell(row_count,0,ip_address)
       if ip_address == url.host
@@ -155,12 +158,13 @@ class HTTPScan
       else
         security_sheet.add_cell(row_count,1,url.host)
       end
-      security_sheet.add_cell(row_count,2,headers['x-xss-protection'])
-      security_sheet.add_cell(row_count,3,headers['strict-transport-security'])
-      security_sheet.add_cell(row_count,4,headers['x-content-type-options'])
-      security_sheet.add_cell(row_count,5,headers['cache-control'])
-      security_sheet.add_cell(row_count,6,headers['content-security-policy'])
-      security_sheet.add_cell(row_count,7,headers['x-frame-options'])
+      security_sheet.add_cell(row_count,2,url.port.to_s)
+      security_sheet.add_cell(row_count,3,headers['x-xss-protection'])
+      security_sheet.add_cell(row_count,4,headers['strict-transport-security'])
+      security_sheet.add_cell(row_count,5,headers['x-content-type-options'])
+      security_sheet.add_cell(row_count,6,headers['cache-control'])
+      security_sheet.add_cell(row_count,7,headers['content-security-policy'])
+      security_sheet.add_cell(row_count,8,headers['x-frame-options'])
       row_count = row_count + 1
     end
     workbook.write(report_file_base + '_headers.xlsx')

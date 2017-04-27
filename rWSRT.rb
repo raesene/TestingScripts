@@ -31,7 +31,7 @@ class WebScreenRecon
     require 'ostruct'
 
     begin
-      require 'headless'
+      #require 'headless'
       require 'selenium-webdriver'
     rescue LoadError
       puts "Couldn't install required gems"
@@ -117,20 +117,21 @@ class WebScreenRecon
   end
 
   def cap
-    @headless = Headless.new
-    @headless.start
+    #@headless = Headless.new
+    #@headless.start
     Selenium::WebDriver::Firefox.path = '/usr/lib/firefox/firefox'
     Selenium::WebDriver::Chrome.path = '/opt/google/chrome/google-chrome'
-    @driver = Selenium::WebDriver.for :firefox
+    #Moved to chrome 27/04/2017 as FFox doesn't do certificate errors
+    @driver = Selenium::WebDriver.for :chrome
     Dir.chdir(@options.output_dir)
     @target_addresses.each do |ip|
       begin
         filename = ip.gsub(/[\,\:\/]/,'_') + ".png"
         puts filename
-        @driver = Selenium::WebDriver.for :firefox
+        @driver = Selenium::WebDriver.for :chrome
         @driver.navigate.to ip
         sleep(@options.sleep_time)
-        @headless.take_screenshot(filename)
+        @driver.save_screenshot(filename)
         @output_file_names[ip] = filename
         @log.info("Saved " + ip)
         @driver.quit
@@ -138,11 +139,11 @@ class WebScreenRecon
         @log.warn "Whoops didn't work with address " + ip
         #If we timeout close the driver and open a new one
         @driver.quit
-        @driver = Selenium::WebDriver.for :firefox
+        @driver = Selenium::WebDriver.for :chrome
       rescue Selenium::WebDriver::Error::WebDriverError
-        @log.warn "darn unstable firefox"
+        @log.warn "darn unstable chrome"
         @driver.quit
-        @driver = Selenium::WebDriver.for :firefox
+        @driver = Selenium::WebDriver.for :chrome
       end
 
     end
