@@ -64,14 +64,35 @@ class KubernetesAnalyzer
   end
 
   def run
-    #TODO: Expose this as an option rather than hard-code to off
-    ssl_options = { verify_ssl: OpenSSL::SSL::VERIFY_NONE}
-    #TODO: Need to setup the other authentication options
-    auth_options = { bearer_token: @options.token}
     @results = Hash.new
-    @results[@options.target_server] = Hash.new
-
-    @client = Kubeclient::Client.new @options.target_server, 'v1', auth_options: auth_options, ssl_options: ssl_options
+    #TODO: Expose this as an option rather than hard-code to off
+    unless @options.config_file
+      ssl_options = { verify_ssl: OpenSSL::SSL::VERIFY_NONE}
+      #TODO: Need to setup the other authentication options
+      if @options.token.length > 1
+        auth_options = { bearer_token: @options.token}
+      elsif @options.token_file.length > 1
+        auth_options = { bearer_token_file: @options.token_file}
+      else
+        #Not sure this will actually work for no auth. needed, try and ooold cluster to check
+        auth_options = {}
+      end
+      @results[@options.target_server] = Hash.new
+      @client = Kubeclient::Client.new @options.target_server, 'v1', auth_options: auth_options, ssl_options: ssl_options
+    else
+      config = Kubeclient::Config.read(@options.config_file)
+      @client = Kubeclient::Client.new(
+        config.context.api_endpoint,
+        config.context.api_version,
+        {
+          ssl_options: config.context.ssl_options,
+          auth_options: config.context.auth_options
+        }
+      )
+      #We didn't specify the target on the command line so lets get it from the config file
+      @options.target_server = config.context.api_endpoint
+      @results[config.context.api_endpoint] = Hash.new
+    end
     #Test response
     begin
       @client.get_pods.to_s
@@ -123,7 +144,7 @@ class KubernetesAnalyzer
     #Check for Basic Auth
     if api_server_command_line.index{|line| line =~ /basic-auth-file/}
       @results[target]['api_server']['Basic Authentication'] = "True"
-    end
+   end
 
     #Check for Static Token Auth
     if api_server_command_line.index{|line| line =~ /token-auth-file/}
@@ -142,7 +163,7 @@ class KubernetesAnalyzer
 
     #Check Secure Port isn't set to 0
     if api_server_command_line.index{|line| line =~ /secure-port=0/}
-      @results[target]['api_server'][' Secure Port set to 0'] "True"
+      @results[target]['api_server'][' Secure Port set to 0'] = "True"
     end
 
 
@@ -242,6 +263,8 @@ if __FILE__ == $0
   options.target_server = 'http://127.0.0.1:8080'
   options.html_report = false
   options.token = ''
+  options.token_file = ''
+  options.config_file = false
 
   opts = OptionParser.new do |opts|
     opts.banner = "Kubernetes Auto Analyzer #{KubernetesAnalyzer::VERSION}"
@@ -251,9 +274,16 @@ if __FILE__ == $0
     end
 
     #TODO: Need options for different authentication mechanisms      
+    opts.on("-c", "--config [CONFIG]", "kubeconfig file to load") do |file|
+      options.config_file = file
+    end
 
     opts.on("-t", "--token [TOKEN]", "Bearer Token to Use") do |token|
       options.token = token
+    end
+
+    opts.on("-f", "--token_file [TOKENFILE]", "Token file to use (provide full path)") do |token_file|
+      options.token = token_file
     end
       
     opts.on("-r", "--report [REPORT]", "Report name") do |rep|
@@ -281,8 +311,8 @@ if __FILE__ == $0
 
   opts.parse!(ARGV)
 
-  unless (options.token.length > 1)
-    puts "No auth token specified"
+  unless (options.token.length > 1 || options.config_file || options.token_file.length > 1)
+    puts "No valid auth mechanism specified"
     puts opts
     exit
   end
