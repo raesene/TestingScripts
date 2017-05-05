@@ -133,12 +133,12 @@ class KubernetesAnalyzer
 
     #Check for Allow Privileged
     unless api_server_command_line.index{|line| line =~ /allow-privileged=false/}
-      @results[target]['api_server']['Privileged Containers'] = "True"
+      @results[target]['api_server']['CIS 1.1.1 - Ensure that the --allow-privileged argument is set to false'] = "Fail"
     end
 
     #Check for Anonymous Auth
     unless api_server_command_line.index{|line| line =~ /anonymous-auth=false/}
-      @results[target]['api_server']['Anonymous Authentication'] = "True"
+      @results[target]['api_server']['1.1.2 Ensure that the --anonymous-auth argument is set to false'] = "Fail"
     end
 
     #Check for Basic Auth
