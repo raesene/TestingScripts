@@ -129,45 +129,97 @@ class KubernetesAnalyzer
     api_server_command_line = @api_server['spec']['containers'][0]['command']
 
     #Check for Allow Privileged
-    unless api_server_command_line.index{|line| line =~ /allow-privileged=false/}
+    unless api_server_command_line.index{|line| line =~ /--allow-privileged=false/}
       @results[target]['api_server']['CIS 1.1.1 - Ensure that the --allow-privileged argument is set to false'] = "Fail"
+    else
+      @results[target]['api_server']['CIS 1.1.1 - Ensure that the --allow-privileged argument is set to false'] = "Pass"
     end
 
     #Check for Anonymous Auth
-    unless api_server_command_line.index{|line| line =~ /anonymous-auth=false/}
+    unless api_server_command_line.index{|line| line =~ /--anonymous-auth=false/}
       @results[target]['api_server']['CIS 1.1.2 - Ensure that the --anonymous-auth argument is set to false'] = "Fail"
+    else
+      @results[target]['api_server']['CIS 1.1.2 - Ensure that the --anonymous-auth argument is set to false'] = "Pass"
     end
 
     #Check for Basic Auth
-    if api_server_command_line.index{|line| line =~ /basic-auth-file/}
+    if api_server_command_line.index{|line| line =~ /--basic-auth-file/}
       @results[target]['api_server']['CIS 1.1.3 - Ensure that the --basic-auth-file argument is not set'] = "Fail"
-   end
+    else
+      @results[target]['api_server']['CIS 1.1.3 - Ensure that the --basic-auth-file argument is not set'] = "Pass"
+    end
 
     #Check for Insecure Allow Any Token
-    if api_server_command_line.index{|line| line =~ /insecure-allow-any-token/}
+    if api_server_command_line.index{|line| line =~ /--insecure-allow-any-token/}
       @results[target]['api_server']['CIS 1.1.4 - Ensure that the --insecure-allow-any-token argument is not set'] = "Fail"
+    else
+      @results[target]['api_server']['CIS 1.1.4 - Ensure that the --insecure-allow-any-token argument is not set'] = "Pass"
     end
 
     #Check to confirm that Kubelet HTTPS isn't set to false
-    if api_server_command_line.index{|line| line =~ /kubelet-https=false/}
+    if api_server_command_line.index{|line| line =~ /--kubelet-https=false/}
       @results[target]['api_server']['CIS 1.1.5 - Ensure that the --kubelet-https argument is set to true'] = "Fail"
+    else
+      @results[target]['api_server']['CIS 1.1.5 - Ensure that the --kubelet-https argument is set to true'] = "Pass"
     end
 
     #Check for Insecure Bind Address
-    if api_server_command_line.index{|line| line =~ /insecure-bind-address/}
+    if api_server_command_line.index{|line| line =~ /--insecure-bind-address/}
       @results[target]['api_server']['CIS 1.1.6 - Ensure that the --insecure-bind-address argument is not set'] = "Fail"
+    else
+      @results[target]['api_server']['CIS 1.1.6 - Ensure that the --insecure-bind-address argument is not set'] = "Pass"
     end
 
     #Check for Insecure Bind port
-    unless api_server_command_line.index{|line| line =~ /insecure-bind-port=0/}
+    unless api_server_command_line.index{|line| line =~ /--insecure-port=0/}
       @results[target]['api_server']['CIS 1.1.7 - Ensure that the --insecure-port argument is set to 0'] = "Fail"
+    else
+      @results[target]['api_server']['CIS 1.1.7 - Ensure that the --insecure-port argument is set to 0'] = "Pass"
     end
 
     #Check Secure Port isn't set to 0
-    if api_server_command_line.index{|line| line =~ /secure-port=0/}
+    if api_server_command_line.index{|line| line =~ /--secure-port=0/}
       @results[target]['api_server']['CIS 1.1.8 - Ensure that the --secure-port argument is not set to 0'] = "Fail"
+    else
+      @results[target]['api_server']['CIS 1.1.8 - Ensure that the --secure-port argument is not set to 0'] = "Pass"
     end
 
+    #
+    unless api_server_command_line.index{|line| line =~ /--profiling=false/}
+      @results[target]['api_server']['CIS 1.1.9 - Ensure that the --profiling argument is set to false'] = "Fail"
+    else
+      @results[target]['api_server']['CIS 1.1.9 - Ensure that the --profiling argument is set to false'] = "Pass"
+    end
+
+    unless api_server_command_line.index{|line| line =~ /--repair-malformed-updates/}
+      @results[target]['api_server']['CIS 1.1.10 - Ensure that the --repair-malformed-updates argument is set to false'] = "Fail"
+    else
+      @results[target]['api_server']['CIS 1.1.10 - Ensure that the --repair-malformed-updates argument is set to false'] = "Pass"
+    end
+
+    if api_server_command_line.index{|line| line =~ /--admission-control\S*AlwaysAdmit/}
+      @results[target]['api_server']['CIS 1.1.11 - Ensure that the admission control policy is not set to AlwaysAdmit'] = "Fail"
+    else
+      @results[target]['api_server']['CIS 1.1.11 - Ensure that the admission control policy is not set to AlwaysAdmit'] = "Pass"
+    end
+
+    unless api_server_command_line.index{|line| line =~ /--admission-control\S*AlwaysPullImages/}
+      @results[target]['api_server']['CIS 1.1.12 - Ensure that the admission control policy is set to AlwaysPullImages'] = "Fail"
+    else
+      @results[target]['api_server']['CIS 1.1.12 - Ensure that the admission control policy is set to AlwaysPullImages'] = "Pass"
+    end
+
+    unless api_server_command_line.index{|line| line =~ /--admission-control\S*DenyEscalatingExec/}
+      @results[target]['api_server']['CIS 1.1.13 - Ensure that the admission control policy is set to DenyEscalatingExec'] = "Fail"
+    else
+      @results[target]['api_server']['CIS 1.1.13 - Ensure that the admission control policy is set to DenyEscalatingExec'] = "Pass"
+    end
+
+    unless api_server_command_line.index{|line| line =~ /--admission-control\S*SecurityContextDeny/}
+      @results[target]['api_server']['CIS 1.1.14 - Ensure that the admission control policy is set to SecurityContextDeny'] = "Fail"
+    else
+      @results[target]['api_server']['CIS 1.1.14 - Ensure that the admission control policy is set to SecurityContextDeny'] = "Pass"
+    end
 
 
 
@@ -201,7 +253,7 @@ class KubernetesAnalyzer
     puts base_report.length.to_s
     report = Kramdown::Document.new(base_report)
     @html_report_file << '
-        <!DOCTYPE html>
+      <!DOCTYPE html>
       <head>
        <title> Kubernetes Analyzer Report</title>
        <meta charset="utf-8"> 
