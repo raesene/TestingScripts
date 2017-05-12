@@ -4,6 +4,10 @@
   #
   # This script is designed to automate security analysis of a Kubernetes cluster based on the CIS Kubernetes Standard
   # it makes use of kubeclient - https://github.com/abonas/kubeclient to access the API
+  # At the moment it works best for installations that run the API server in a pod as that makes it easy to query the command line options
+  #
+  # Best way to access it us use a kubeconfig file as this contains all the information needed.
+  # Options are also there for providing tokens to access, but they're a bit more awkward to use.
   #
   # == Author
   # Author::  Rory McCune
@@ -24,15 +28,18 @@
   # along with this program.  If not, see <http://www.gnu.org/licenses/>.
   #
   # == Options
-  #   -h, --help            Displays help message
-  #   -v, --version         Display the version, then exit
-  #   -s, --server          The target server to connect to in the format https://server_ip:server_port
-  #   -r <file>, --report <file>        Name of file for reporting
-  #   --reportDirectory <dir>   Place the report in a different directory
+  #   -h, --help                                    Displays help message
+  #   -v, --version                                 Display the version, then exit
+  #   -c <file>, --config <file>                    Specify a kubeconfig file to use for connection to the API server
+  #   -r <file>, --report <file>                    Name of file for reporting
+  #   --reportDirectory <dir>                       Place the report in a different directory
+  #   -t <token>, --token <token>                   Specify an auth. token to use
+  #   -f <token_file>, --token_file <token_file>    Specify a file to read an authentication token from
+  #   -s, --server                                  The target server to connect to in the format https://server_ip:server_port. Not needed if a config file is used
   #
   # == Usage 
   #
-  #   kubernetesanalyzer.rb -s <API Server endpoint> -r <reportfile> -t <bearer-token to use>
+  #   kubernetesanalyzer.rb -c <kubeconfigfile> -r <reportfile>
   
 class KubernetesAnalyzer
     VERSION = '0.0.1'
@@ -121,16 +128,6 @@ class KubernetesAnalyzer
     
     api_server_command_line = @api_server['spec']['containers'][0]['command']
 
-    #Check for Insecure Bind Address
-    if api_server_command_line.index{|line| line =~ /insecure-bind-address/}
-      @results[target]['api_server']['Insecure Bind Address'] = "True"
-    end
-
-    #Check for Insecure Bind port
-    if api_server_command_line.index{|line| line =~ /insecure-bind-port/}
-      @results[target]['api_server']['Insecure Bind Port'] = "True"
-    end
-
     #Check for Allow Privileged
     unless api_server_command_line.index{|line| line =~ /allow-privileged=false/}
       @results[target]['api_server']['CIS 1.1.1 - Ensure that the --allow-privileged argument is set to false'] = "Fail"
@@ -138,32 +135,37 @@ class KubernetesAnalyzer
 
     #Check for Anonymous Auth
     unless api_server_command_line.index{|line| line =~ /anonymous-auth=false/}
-      @results[target]['api_server']['1.1.2 Ensure that the --anonymous-auth argument is set to false'] = "Fail"
+      @results[target]['api_server']['CIS 1.1.2 - Ensure that the --anonymous-auth argument is set to false'] = "Fail"
     end
 
     #Check for Basic Auth
     if api_server_command_line.index{|line| line =~ /basic-auth-file/}
-      @results[target]['api_server']['Basic Authentication'] = "True"
+      @results[target]['api_server']['CIS 1.1.3 - Ensure that the --basic-auth-file argument is not set'] = "Fail"
    end
-
-    #Check for Static Token Auth
-    if api_server_command_line.index{|line| line =~ /token-auth-file/}
-      @results[target]['api_server']['Token Authentication'] = "True"
-    end
 
     #Check for Insecure Allow Any Token
     if api_server_command_line.index{|line| line =~ /insecure-allow-any-token/}
-      @results[target]['api_server']['Insecure Allow Any Token'] = "True"
+      @results[target]['api_server']['CIS 1.1.4 - Ensure that the --insecure-allow-any-token argument is not set'] = "Fail"
     end
 
     #Check to confirm that Kubelet HTTPS isn't set to false
     if api_server_command_line.index{|line| line =~ /kubelet-https=false/}
-      @results[target]['api_server']['No Kublet HTTPS'] = "True"
+      @results[target]['api_server']['CIS 1.1.5 - Ensure that the --kubelet-https argument is set to true'] = "Fail"
+    end
+
+    #Check for Insecure Bind Address
+    if api_server_command_line.index{|line| line =~ /insecure-bind-address/}
+      @results[target]['api_server']['CIS 1.1.6 - Ensure that the --insecure-bind-address argument is not set'] = "Fail"
+    end
+
+    #Check for Insecure Bind port
+    unless api_server_command_line.index{|line| line =~ /insecure-bind-port=0/}
+      @results[target]['api_server']['CIS 1.1.7 - Ensure that the --insecure-port argument is set to 0'] = "Fail"
     end
 
     #Check Secure Port isn't set to 0
     if api_server_command_line.index{|line| line =~ /secure-port=0/}
-      @results[target]['api_server'][' Secure Port set to 0'] = "True"
+      @results[target]['api_server']['CIS 1.1.8 - Ensure that the --secure-port argument is not set to 0'] = "Fail"
     end
 
 
@@ -202,6 +204,7 @@ class KubernetesAnalyzer
         <!DOCTYPE html>
       <head>
        <title> Kubernetes Analyzer Report</title>
+       <meta charset="utf-8"> 
        <style>
         body {
           font: normal 14px auto "Trebuchet MS", Verdana, Arial, Helvetica, sans-serif;
@@ -287,7 +290,7 @@ if __FILE__ == $0
     end
       
     opts.on("-r", "--report [REPORT]", "Report name") do |rep|
-      options.report_file = 'nmap_' + rep
+      options.report_file = rep + '_kube'
     end
 
     opts.on("--html_report", "Generate an HTML report as well as the txt one") do |html|
