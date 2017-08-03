@@ -218,6 +218,12 @@ class RaccessChecker
       rescue Errno::ECONNREFUSED
         puts "connection refused on " + url.request_uri
         next
+      rescue OpenSSL::SSL::SSLError
+        puts "no SSL connection possible on " + url.request_uri
+        next
+      rescue Zlib::BufError
+        puts "ZLib buff error on " + url.request_uri
+        next
       end
       #quick hack for response_code 204
       if get_response.code.to_i == 204 || head_response.code.to_i == 204
