@@ -92,7 +92,7 @@ class NessusautoAnalyzer
       @log = Logger.new(STDOUT)
     end
     #Change the line below to Logger::DEBUG to get debugging messages during the program run
-    @log.level = Logger::DEBUG
+    @log.level = Logger::INFO
     @log.debug("Log created at " + Time.now.to_s)
     @log.debug("Scan type is : #{@options.scan_type}")
     @log.debug("Directory being scanned is : #{@options.scan_directory}") if @options.scan_type == :directory
