@@ -92,7 +92,7 @@ class NessusautoAnalyzer
       @log = Logger.new(STDOUT)
     end
     #Change the line below to Logger::DEBUG to get debugging messages during the program run
-    @log.level = Logger::ERROR
+    @log.level = Logger::DEBUG
     @log.debug("Log created at " + Time.now.to_s)
     @log.debug("Scan type is : #{@options.scan_type}")
     @log.debug("Directory being scanned is : #{@options.scan_directory}") if @options.scan_type == :directory
@@ -234,7 +234,11 @@ class NessusautoAnalyzer
         if item['pluginName'] == 'SSL Certificate Information'
           cn_string = issue['plugin_output'][/Common Name: .*$/]
           #Lose the Common Name
-          cn_string.sub!(/Common Name: /,'')
+          begin
+            cn_string.sub!(/Common Name: /,'')
+          rescue NoMethodError
+            cn_string = "nocnhere"
+          end
           #For Wild Card Certs
           if cn_string =~ /\*/
             @ssl_server_list << ip_address + ':' + item['port']
