@@ -92,7 +92,7 @@ class NessusautoAnalyzer
       @log = Logger.new(STDOUT)
     end
     #Change the line below to Logger::DEBUG to get debugging messages during the program run
-    @log.level = Logger::INFO
+    @log.level = Logger::DEBUG
     @log.debug("Log created at " + Time.now.to_s)
     @log.debug("Scan type is : #{@options.scan_type}")
     @log.debug("Directory being scanned is : #{@options.scan_directory}") if @options.scan_type == :directory
@@ -597,6 +597,7 @@ class NessusautoAnalyzer
     @host_report_file = File.new(@base_dir + '/' + @options.report_file + '_nessus_hosts.txt','w+')
     @web_server_report_file = File.new(@base_dir + '/' + @options.report_file + '_web_servers.txt','w+')
     @ssl_server_report_file = File.new(@base_dir + '/' + @options.report_file + '_ssl_servers.txt','w+')
+    @issue_report_file = File.new(@base_dir + '/' + @options.report_file + '_report_by_issue.txt','w+')
 
     @exploitable_vulns.each do |address,exploit|
       @exploitable_report_file.puts "exploitable issues for #{address}"
@@ -616,7 +617,8 @@ class NessusautoAnalyzer
     @high_report_file.puts "High Risk Issues"
     @high_report_file.puts "=================\n"
     @high_vulns.each do |item, results|
-      @high_report_file.puts results['issue']['title']
+      pluginid, port = item.split("-")
+      @high_report_file.puts results['issue']['title'] + " - Plugin ID " + pluginid + " - Port " + port
       @high_report_file.puts "CVE : " + results['issue']['cve']
       @high_report_file.puts "Exploitability : " + results['issue']['exploitable']
       @high_report_file.puts "Affected Hosts : " + results['affected_hosts'].uniq.join(', ')
@@ -626,7 +628,8 @@ class NessusautoAnalyzer
     @critical_report_file.puts "Critical Risk Issues"
     @critical_report_file.puts "=================\n"
     @critical_vulns.each do |item, results|
-      @critical_report_file.puts results['issue']['title']
+      pluginid, port = item.split("-")
+      @critical_report_file.puts results['issue']['title'] + " - Plugin ID " + pluginid + " - Port " + port
       @critical_report_file.puts "CVE : " + results['issue']['cve']
       @critical_report_file.puts "Exploitability : " + results['issue']['exploitable']
       @critical_report_file.puts "Affected Hosts : " + results['affected_hosts'].uniq.join(', ')
@@ -636,7 +639,8 @@ class NessusautoAnalyzer
     @medium_report_file.puts "Medium Risk Issues"
     @medium_report_file.puts "=================\n"
     @medium_vulns.each do |item, results|
-      @medium_report_file.puts results['issue']['title']
+      pluginid, port = item.split("-")
+      @medium_report_file.puts results['issue']['title'] + " - Plugin ID " + pluginid + " - Port " + port
       @medium_report_file.puts "CVE : " + results['issue']['cve']
       @medium_report_file.puts "Exploitability : " + results['issue']['exploitable']
       @medium_report_file.puts "Affected Hosts : " + results['affected_hosts'].uniq.join(', ')
@@ -646,7 +650,8 @@ class NessusautoAnalyzer
     @low_report_file.puts "Low Risk Issues"
     @low_report_file.puts "=================\n"
     @low_vulns.each do |item, results|
-      @low_report_file.puts results['issue']['title']
+      pluginid, port = item.split("-")
+      @low_report_file.puts results['issue']['title'] + " - Plugin ID " + pluginid + " - Port " + port
       @low_report_file.puts "CVE : " + results['issue']['cve']
       @low_report_file.puts "Exploitability : " + results['issue']['exploitable']
       @low_report_file.puts "Affected Hosts : " + results['affected_hosts'].uniq.join(', ')
@@ -672,6 +677,66 @@ class NessusautoAnalyzer
     @ssl_server_list.each do |host|
       @ssl_server_report_file.puts host
     end
+
+    #This is a nasty hack to get a report by issue.
+    unique_issues = Hash.new
+    @critical_vulns.each do |item, results|
+      port = item.split('-')[1]
+      title = results['issue']['title'] + " Port: " + port
+      
+      unless unique_issues[title]
+        unique_issues[title] = Array.new
+      end
+      results['affected_hosts'].each do |host|
+        unique_issues[title] << host
+      end
+    end
+    @high_vulns.each do |item, results|
+      port = item.split('-')[1]
+      title = results['issue']['title'] + " Port: " + port
+      unless unique_issues[title]
+        unique_issues[title] = Array.new
+      end
+      results['affected_hosts'].each do |host|
+        unique_issues[title] << host
+      end
+    end
+    @medium_vulns.each do |item, results|
+      port = item.split('-')[1]
+      title = results['issue']['title'] + " Port: " + port
+      unless unique_issues[title]
+        unique_issues[title] = Array.new
+      end
+      results['affected_hosts'].each do |host|
+        unique_issues[title] << host
+      end
+    end
+    @low_vulns.each do |item, results|
+      port = item.split('-')[1]
+      title = results['issue']['title'] + " Port: " + port
+      unless unique_issues[title]
+        unique_issues[title] = Array.new
+      end
+      results['affected_hosts'].each do |host|
+        unique_issues[title] << host
+      end
+    end
+    @info_vulns.each do |item, results|
+      port = item.split('-')[1]
+      title = results['issue']['title'] + " Port: " + port
+      unless unique_issues[title]
+        unique_issues[title] = Array.new
+      end
+      results['affected_hosts'].each do |host|
+        unique_issues[title] << host
+      end
+    end
+    unique_issues.sort.each do |issue, affected|
+      @issue_report_file.puts issue + " - " + affected.join(', ')
+    end
+
+
+
 
     @host_report_file.puts "Issues by Host"
     @host_report_file.puts "===============\n"
