@@ -24,3 +24,5 @@ nmap-parse-report.html
 nmap-parse-report.xlsx
 
 nmap-parse-report.txt
+
+Gemfile.lock
