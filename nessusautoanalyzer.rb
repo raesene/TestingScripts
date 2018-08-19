@@ -682,55 +682,36 @@ class NessusautoAnalyzer
     unique_issues = Hash.new
     @critical_vulns.each do |item, results|
       port = item.split('-')[1]
-      title = results['issue']['title'] + " Port: " + port
+      title = results['issue']['title']
       
       unless unique_issues[title]
         unique_issues[title] = Array.new
       end
       results['affected_hosts'].each do |host|
-        unique_issues[title] << host
+        unique_issues[title] << host + ":" + port
       end
     end
     @high_vulns.each do |item, results|
       port = item.split('-')[1]
-      title = results['issue']['title'] + " Port: " + port
+      title = results['issue']['title']
       unless unique_issues[title]
         unique_issues[title] = Array.new
       end
       results['affected_hosts'].each do |host|
-        unique_issues[title] << host
+        unique_issues[title] << host + ":" + port
       end
     end
     @medium_vulns.each do |item, results|
       port = item.split('-')[1]
-      title = results['issue']['title'] + " Port: " + port
+      title = results['issue']['title']
       unless unique_issues[title]
         unique_issues[title] = Array.new
       end
       results['affected_hosts'].each do |host|
-        unique_issues[title] << host
+        unique_issues[title] << host + ":" + port
       end
     end
-    @low_vulns.each do |item, results|
-      port = item.split('-')[1]
-      title = results['issue']['title'] + " Port: " + port
-      unless unique_issues[title]
-        unique_issues[title] = Array.new
-      end
-      results['affected_hosts'].each do |host|
-        unique_issues[title] << host
-      end
-    end
-    @info_vulns.each do |item, results|
-      port = item.split('-')[1]
-      title = results['issue']['title'] + " Port: " + port
-      unless unique_issues[title]
-        unique_issues[title] = Array.new
-      end
-      results['affected_hosts'].each do |host|
-        unique_issues[title] << host
-      end
-    end
+
     unique_issues.sort.each do |issue, affected|
       @issue_report_file.puts issue + " - " + affected.join(', ')
     end
