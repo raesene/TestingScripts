@@ -22,7 +22,7 @@ class DockerfileAnalyzer
       @log = Logger.new(STDOUT)
     end
     #Change before release
-    @log.level = Logger.DEBUG
+    @log.level = Logger::DEBUG
 
     @log.debug("Log created at " + Time.now.to_s)
     @log.debug("Scan type is : " + @options.scan_type)
@@ -43,6 +43,7 @@ class DockerfileAnalyzer
       parse_files
       analyze_files
       report
+    end
   end
 
   def scan_dirs
@@ -79,14 +80,6 @@ class DockerfileAnalyzer
       results[:runs] = Array.new
       #To Store Workdirs
       results[:workdirs] = Array.new
-      
-
-      #Populate the Results Hash
-      file_contents.each do |line|
-
-      end
-
-
     end
   end
 
@@ -153,5 +146,4 @@ if __FILE__ == $0
 
   analysis = DockerfileAnalyzer.new(options)
   analysis.run
-
 end
