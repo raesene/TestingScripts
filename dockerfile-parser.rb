@@ -25,8 +25,9 @@ class DockerfileAnalyzer
     @log.level = Logger::DEBUG
 
     @log.debug("Log created at " + Time.now.to_s)
-    @log.debug("Scan type is : " + @options.scan_type)
+    @log.debug("Scan type is : " + @options.scan_type.to_s)
     @log.debug("Directory being scanned is : " + @options.scan_directory) if @options.scan_type == :directory
+    puts @options.report_file
     @log.debug("File being scanned is : " + @options.scan_file) if @options.scan_type == :file
   end
 
@@ -67,19 +68,39 @@ class DockerfileAnalyzer
           file_contents.delete_at(i+1)
         end
       end
-
-      #To Store CMD and Entrypoints
+      
+      #Not gathering all the commands here just the ones we want to analyse
+      #CMD or ENTRYPOINT
       results[:command] = Array.new
-      #To Store FROMs
       results[:from] = Array.new
-      #To Store comments
-      results[:comments] = Array.new
-      #To Store Labels
-      results[:labels] = Array.new
-      #To Store Runs
-      results[:runs] = Array.new
-      #To Store Workdirs
-      results[:workdirs] = Array.new
+      results[:run] = Array.new
+      results[:add] = Array.new
+      results[:copy] = Array.new
+      results[:env] = Array.new
+      results[:user] = Array.new
+      file_contents.each do |line|
+        cmd = line.split(' ')[0]
+        @log.debug ("Working on a #{cmd}")
+        case cmd
+        when "CMD" || "ENTRYPOINT"
+          results[:command] << line
+        when "ENV" || "ARG"
+          results[:env] << line
+        when "RUN"
+          results[:run] << line
+        when "USER"
+          results[:user] << line
+        when "FROM"
+          results[:from] << line
+        when "ADD"
+          results[:add] << line
+        when "COPY"
+          results[:copy] << line
+        end
+
+
+      end
+      @parsed_dockerfiles << results
     end
   end
 
@@ -98,7 +119,8 @@ if __FILE__ == $0
   options.report_directory = Dir.pwd
   options.report_file = "docker-analysis-report"
   options.scan_directory = Dir.pwd
-  options.scan_file = ''
+  options.scan_file = 'Lorem'
+  
   options.scan_type = :notset
   options.recursive = false
 
@@ -113,7 +135,7 @@ if __FILE__ == $0
       options.recursive = true
     end
 
-    opts.on("-f", "--file", "File to scan for issues") do |file|
+    opts.on("-f", "--file [FILE]", "File to scan for issues") do |file|
       options.scan_file = file
       options.scan_type = :file
     end
