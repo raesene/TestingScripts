@@ -69,11 +69,13 @@ class DockerfileAnalyzer
         end
       end
       
+      results[:dockerfile] = file
       #Not gathering all the commands here just the ones we want to analyse
-      #CMD or ENTRYPOINT
-      results[:command] = Array.new
+
       results[:from] = Array.new
       results[:run] = Array.new
+      #CMD or ENTRYPOINT
+      results[:command] = Array.new
       results[:add] = Array.new
       results[:copy] = Array.new
       results[:env] = Array.new
@@ -105,6 +107,47 @@ class DockerfileAnalyzer
   end
 
   def analyze_files
+    @findings = Hash.new
+    @parsed_dockerfiles.each do |results|
+      target = results[:dockerfile]
+      @findings[target] = Hash.new
+      #If there is no user line in the Dockerfile it'll default to root
+      unless results[:user].length > 0
+        @findings[target][:root_container] = true
+      end
+
+      # We can't clearly say if ENV or ARG are problems so we'll print
+      if results[:env].length > 0
+        @findings[target][:env_to_check] = Array.new
+        results[:env].each {|env| @findings[target][:env_to_check] << env}
+      end
+
+      # We look for things like wget and curl to check software installs
+      results[:run].each do |r|
+        if r =~ /[wget|curl]/
+          @findings[target][:run_to_check] = Array.new
+          @findings[target][:run_to_check] << r 
+        end
+      end
+
+      # FROM lines need a manual check to see whether they're good or not
+      @findings[target][:from_to_check] = Array.new
+      results[:from].each {|f| @findings[target][:from_to_check] << f}
+
+      # latest tags are generallly a bad idea, let's flag that
+      results[:from].each do |f|
+        if f =~ /latest$/
+          @findings[target][:latest] = true
+        end
+      end
+
+      # Minor point, but we should recommend COPY over ADD
+      if results[:add].length > 0
+        @findings[target][:uses_add] = true
+      end
+
+
+    end
   end
 
   def report
