@@ -1,4 +1,4 @@
-#!/usr/bin/env ruby
+#! /usr/bin/env ruby
 # This script take in role/role binding and clusterrole/clusterrolbinding objects in JSON
 # And parses out some info, then creates a table for them to help in a review.
 # To get it working you need 4 files
@@ -41,14 +41,17 @@ class K8sRbacAnalyzer
     role_input = File.open(@role_file,'r').read
     rb_input = File.open(@rb_file,'r').read
 
-    cluster_roles = JSON.parse(cr_input)
-    cluster_role_bindings = JSON.parse(crb_input)
-    roles = JSON.parse(role_input)
-    role_bindings = JSON.parse(rb_input)
+    @cluster_roles = JSON.parse(cr_input)
+    @cluster_role_bindings = JSON.parse(crb_input)
+    @roles = JSON.parse(role_input)
+    @role_bindings = JSON.parse(rb_input)
 
     @results = Hash.new
     @subject_results = Hash.new
-    cluster_roles['items'].each do |role|
+  end
+
+  def parseclusterroles
+    @cluster_roles['items'].each do |role|
       role_output = Hash.new
       role_output[:rules] = role['rules']
       begin
@@ -62,7 +65,7 @@ class K8sRbacAnalyzer
       end
 
       role_output[:subjects] = Array.new
-      cluster_role_bindings['items'].each do |binding|
+      @cluster_role_bindings['items'].each do |binding|
         if binding['roleRef']['kind'] == "ClusterRole"
           if binding['roleRef']['name'] == role['metadata']['name']
             if binding['subjects']
@@ -81,6 +84,11 @@ class K8sRbacAnalyzer
     end
   end
 
+  def parseroles
+  end
+
+  def security_checks
+  end
   def report
     @html_report_file = File.new(@options.report_file + '.html','w+')
 
@@ -199,19 +207,19 @@ if __FILE__ == $0
 
   opts = OptionParser.new do |opts|
     opts.banner = "Kubernetes RBAC Auditor #{K8sRbacAnalyzer::VERSION}"
-    opts.on( "--crfile [CRFILE]", "Cluster Role File to review") do |crfile|
+    opts.on("--crfile [CRFILE]", "Cluster Role File to review") do |crfile|
       options.cr_file = crfile
     end
 
-    opts.on( "--crbfile [CRBFILE]", "Cluster Role Bindings File to review") do |crbfile|
+    opts.on("--crbfile [CRBFILE]", "Cluster Role Bindings File to review") do |crbfile|
       options.crb_file = crbfile
     end
 
-    opts.on(" --rolefile [ROLEFILE]", "File containing role information") do |rolefile|
+    opts.on("--rolefile [ROLEFILE]", "File containing role information") do |rolefile|
       options.role_file = rolefile
     end
 
-    opts.on(" --rbfile [RBFILE]", "File containing the role binding information") do |rbfile|
+    opts.on("--rbfile [RBFILE]", "File containing the role binding information") do |rbfile|
       options.rb_file = rbfile
     end
 
@@ -244,5 +252,8 @@ if __FILE__ == $0
 
   analysis = K8sRbacAnalyzer.new(options)
   analysis.run
+  analysis.parseclusterroles
+  analysis.parseroles
+  analysis.security_checks
   analysis.report
 end
