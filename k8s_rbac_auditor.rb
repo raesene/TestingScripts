@@ -145,6 +145,24 @@ class K8sRbacAnalyzer
   end
 
   def security_checks
+    @security_check_results = Hash.new
+    @security_check_results[:get_secrets] = Hash.new
+    @results.each do |namespace, results|
+      @security_check_results[:get_secrets][namespace] = Hash.new
+      results.each do |role_name, info|
+        info[:rules].each do |rule|
+          next unless rule['resources'] && rule['verbs']
+          if rule['resources'].include?('secrets') && rule['verbs'].include?('get')
+            @security_check_results[:get_secrets][namespace][role_name] = info
+            @log.debug("Added a role called #{role_name}")
+          end
+          if rule['resources'].include?('*') && rule['verbs'].include?('*')
+            @security_check_results[:get_secrets][namespace][role_name] = info
+            @log.debug("Added a role called #{role_name}")
+          end
+        end
+      end
+    end
   end
 
   def report
@@ -210,6 +228,26 @@ class K8sRbacAnalyzer
       
         '
 
+    @html_report_file.puts "<br><br>"
+    @html_report_file.puts "<h2>Privileged Roles</h2>"
+    @security_check_results[:get_secrets].each do |namespace, roles|
+      if namespace == 'cluster_roles'
+        @html_report_file.puts "<h2>Cluster Roles with Get Secrets</h2>"
+      else
+        @html_report_file.puts "<h2>Roles for the #{namespace} namespace with Get Secrets</h2>"
+      end
+      @html_report_file.puts "<table><thead><tr><th>Role Name</th><th>Default?</th><th>Subjects</th></thead>"
+      @log.debug("Number of Roles with get secrets in this namespace #{roles.length.to_s}")
+      roles.each do |role|
+        subjects = ''
+        role[1][:subjects].each do |subject|
+          subjects << "#{subject['kind']}:#{subject['namespace']}:#{subject['name']}<br>"
+        end
+        @html_report_file.puts "<tr><td>#{role[0]}</td><td>#{role[1][:default]}</td><td>#{subjects}</td></tr>"
+      end
+      @html_report_file.puts "</table><br><br>"
+    end
+
 
     @html_report_file.puts "<br><br>"
     @html_report_file.puts "<br><br><h2>Cluster Role Information</h2>"
@@ -245,6 +283,8 @@ class K8sRbacAnalyzer
     end
     @html_report_file.puts "</table>"
     @html_report_file.puts "<br><br>"
+
+
     @results.each do |name, info|
       next if name == 'cluster_roles'
       @log.debug "printing results for namespace : #{name}"
