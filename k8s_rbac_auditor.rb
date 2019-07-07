@@ -1,5 +1,12 @@
 #!/usr/bin/env ruby
-
+# This script take in role/role binding and clusterrole/clusterrolbinding objects in JSON
+# And parses out some info, then creates a table for them to help in a review.
+# To get it working you need 4 files
+# clusterroles.json - produced with kubectl get clusterroles -o json
+# clusterrolebindings.json - produced with kubectl get clusterrolebindings -o json
+# roles.json - produced with kubectl get roles --all-namespaces -o json
+# rolebindings.json - producted with kubectl get rolebindings --all-namespaces -o json
+# 
 
 class K8sRbacAnalyzer
   VERSION='0.0.1'
@@ -10,6 +17,8 @@ class K8sRbacAnalyzer
     @base_dir = @options.report_directory
     @cr_file = @options.cr_file
     @crb_file = @options.crb_file
+    @role_file = @options.role_file
+    @rb_file = @options.rb_file
     if !File.exists?(@base_dir)
       Dir.mkdir(@base_dir)
     end
@@ -29,9 +38,13 @@ class K8sRbacAnalyzer
     require 'json'
     cr_input = File.open(@cr_file,'r').read
     crb_input = File.open(@crb_file,'r').read
+    role_input = File.open(@role_file,'r').read
+    rb_input = File.open(@rb_file,'r').read
 
     cluster_roles = JSON.parse(cr_input)
     cluster_role_bindings = JSON.parse(crb_input)
+    roles = JSON.parse(role_input)
+    role_bindings = JSON.parse(rb_input)
 
     @results = Hash.new
     @subject_results = Hash.new
@@ -181,6 +194,8 @@ if __FILE__ == $0
   options.report_file = "k8s-rbac-analysis-report"
   options.cr_file = ''
   options.crb_file = ''
+  options.role_file = ''
+  options.rb_file = ''
 
   opts = OptionParser.new do |opts|
     opts.banner = "Kubernetes RBAC Auditor #{K8sRbacAnalyzer::VERSION}"
@@ -190,6 +205,14 @@ if __FILE__ == $0
 
     opts.on( "--crbfile [CRBFILE]", "Cluster Role Bindings File to review") do |crbfile|
       options.crb_file = crbfile
+    end
+
+    opts.on(" --rolefile [ROLEFILE]", "File containing role information") do |rolefile|
+      options.role_file = rolefile
+    end
+
+    opts.on(" --rbfile [RBFILE]", "File containing the role binding information") do |rbfile|
+      options.rb_file = rbfile
     end
 
     opts.on("--reportDirectory [REPORTDIRECTORY", "Directory for the report") do |repdir|
