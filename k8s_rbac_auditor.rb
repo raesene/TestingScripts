@@ -64,17 +64,32 @@ class K8sRbacAnalyzer
         role_output[:default] = false
       end
 
-      role_output[:subjects] = Array.new
+      role_output[:cluster_subjects] = Array.new
       @cluster_role_bindings['items'].each do |binding|
         if binding['roleRef']['kind'] == "ClusterRole"
           if binding['roleRef']['name'] == role['metadata']['name']
             if binding['subjects']
               binding['subjects'].each do |subject|
-                role_output[:subjects] << subject
+                role_output[:cluster_subjects] << subject
                 unless @subject_results[subject]
                   @subject_results[subject] = Array.new
                 end
                 @subject_results[subject] << role['metadata']['name']
+              end
+            end
+          end
+        end
+      end
+      role_output[:subjects] = Array.new
+      @role_bindings['items'].each do |binding|
+        if binding['roleRef']['kind'] == "ClusterRole"
+          if binding['roleRef']['name'] == role['metadata']['name']
+            if binding['subjects']
+              binding['subjects'].each do |subject|
+                #Not 100% that this logic holds
+                subject['namespace'] = binding['metadata']['namespace']
+                role_output[:subjects] << subject
+                @log.debug("Namespace for subject is #{subject['namespace']}")
               end
             end
           end
@@ -89,6 +104,7 @@ class K8sRbacAnalyzer
 
   def security_checks
   end
+
   def report
     @html_report_file = File.new(@options.report_file + '.html','w+')
 
@@ -155,12 +171,18 @@ class K8sRbacAnalyzer
 
     @html_report_file.puts "<br><br>"
     @html_report_file.puts "<br><br><h2>Cluster Role Information</h2>"
-    @html_report_file.puts "<table><thead><tr><th>Name</th><th>Default?</th><th>Subjects</th><th>Rules</th></tr></thead>"
+    @html_report_file.puts "<table><thead><tr><th>Name</th><th>Default?</th><th>Cluster Subjects</th><th>Subjects</th><th>Rules</th></tr></thead>"
     @results.each do |name, info|
-      subjects = ''
-      info[:subjects].each do |subject|
-        subjects << "#{subject['kind']}:#{subject['namespace']}:#{subject['name']}<br>"
+      cluster_subjects = ''
+      info[:cluster_subjects].each do |subject|
+        cluster_subjects << "#{subject['kind']}:#{subject['namespace']}:#{subject['name']}<br>"
       end
+      subjects = ''
+      info[:subjects].each do |sus|
+        @log.debug "Namespace for subject is #{sus['namespace']}"
+        subjects << "#{sus['kind']}:#{sus['namespace']}:#{sus['name']}<br>"
+      end
+
       rules = ''
       info[:rules].each do |rule|
         unless rule['verbs']
@@ -177,7 +199,7 @@ class K8sRbacAnalyzer
         end
         rules << "Verbs : #{rule['verbs'].join(', ')}<br>API Groups : #{rule['apiGroups'].join(', ')}<br>Resources : #{rule['resources'].join(', ')}<br>Non Resource URLs: #{rule['nonResourceURLs'].join(', ')}<hr>"
       end
-      @html_report_file.puts "<tr><td>#{name}</td><td>#{info[:default]}</td><td>#{subjects}</td><td>#{rules}</td></tr>"
+      @html_report_file.puts "<tr><td>#{name}</td><td>#{info[:default]}</td><td>#{cluster_subjects}</td><td>#{subjects}</td><td>#{rules}</td></tr>"
     end
     @html_report_file.puts "</table>"
     @html_report_file.puts "<br><br>"
