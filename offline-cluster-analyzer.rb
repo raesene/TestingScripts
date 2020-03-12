@@ -57,9 +57,6 @@ class Offlinek8sAnalyzer
     end
 
     @cluster_info['container_images'].uniq!
-    
-    
-    
   end
 
   def object_info
@@ -94,6 +91,49 @@ class Offlinek8sAnalyzer
       end
     end
     @log.debug("Found #{@cluster_info['namespaces'].length.to_s } namespaces")
+  end
+
+  def node_info
+    @log.debug("Starting node Info")
+    @cluster_info['nodes'] = Array.new
+    @data['items'].each do |item|
+      if item['kind'] == "Node"
+        @cluster_info['nodes'] << item['metadata']['name']
+      end
+    end
+  end
+
+  def rbac_info
+    @log.debug("Starting RBAC Info")
+    @cluster_info['clusterroles'] = Array.new
+    @cluster_info['clusterrolebindings'] = Array.new
+    @cluster_info['roles'] = Array.new
+    @cluster_info['rolebindings'] = Array.new
+
+    @data['items'].each do |item|
+      if item['kind'] == "ClusterRole"
+        @cluster_info['clusterroles'] << item['metadata']['name']
+      end
+    end
+
+    @data['items'].each do |item|
+      if item['kind'] == "ClusterRoleBinding"
+        @cluster_info['clusterrolebindings'] << item['metadata']['name']
+      end
+    end
+
+    @data['items'].each do |item|
+      if item['kind'] == "Role"
+        @cluster_info['roles'] << item['metadata']['name']
+      end
+    end
+
+    @data['items'].each do |item|
+      if item['kind'] == "RoleBinding"
+        @cluster_info['rolebindings'] << item['metadata']['name']
+      end
+    end
+
   end
 
   def report
@@ -165,36 +205,54 @@ class Offlinek8sAnalyzer
     #Summary Stats
     @html_report_file.puts "<h2>Summary Statistics</h2>"
     @html_report_file.puts "<table><thead><tr><th>Check</th><th>Number</th></tr></thead>"
-    @log.debug("Number of container images should be " + @cluster_info['container_images'].length.to_s)
-    @html_report_file.puts "<tr><td>Unique Docker Images</td><td>#{@cluster_info['container_images'].length.to_s}</td></tr>"
+    @html_report_file.puts "<tr><td>Namespaces</td><td>#{@cluster_info['namespaces'].length.to_s}</td></tr>"
+    @html_report_file.puts "<tr><td>Nodes</td><td>#{@cluster_info['nodes'].length.to_s}</td></tr>"
     @html_report_file.puts "<tr><td>Pods running in cluster</td><td>#{@cluster_info['pods'].length.to_s}</td></tr>"
+    @html_report_file.puts "<tr><td>Cluster Roles in cluster</td><td>#{@cluster_info['clusterroles'].length.to_s}</td></tr>"
+    @html_report_file.puts "<tr><td>Cluster Role Bindings in cluster</td><td>#{@cluster_info['clusterrolebindings'].length.to_s}</td></tr>"
+    @html_report_file.puts "<tr><td>Roles in cluster</td><td>#{@cluster_info['roles'].length.to_s}</td></tr>"
+    @html_report_file.puts "<tr><td>Role Bindings in cluster</td><td>#{@cluster_info['rolebindings'].length.to_s}</td></tr>"
     @html_report_file.puts "<tr><td>Object Types In use</td><td>#{@cluster_info['objects'].length.to_s}</td></tr>"
     @html_report_file.puts "<tr><td>CRDs In use</td><td>#{@cluster_info['crds'].length.to_s}</td></tr>"
-    @html_report_file.puts "<tr><td>namespaces</td><td>#{@cluster_info['namespaces'].length.to_s}</td></tr>"
+    @html_report_file.puts "<tr><td>Unique Docker Images</td><td>#{@cluster_info['container_images'].length.to_s}</td></tr>"
     @html_report_file.puts "</table>"
 
     # Namespace Info Section
     @html_report_file.puts "<h2>Namespaces in cluster</h2>"
-    @html_report_file.puts "<table><thead><tr><th>namespace name</th></tr></thead>"
-    @html_report_file.puts "<tr><td>#{@cluster_info['namespaces'].join('<br>')}</td></tr>"
+    @html_report_file.puts "<table><thead><tr><th>namespace name</th><th>pods in namespace</th></tr></thead>"
+    @cluster_info['namespaces'].each do |namespace|
+      pods = 0
+      @cluster_info['pods'].each do |pod|
+        if pod['metadata']['namespace'] == namespace
+          pods = pods +1
+        end
+      end
+      @html_report_file.puts "<tr><td>#{namespace}</td><td>#{pods}</td></tr>"  
+    end
+    @html_report_file.puts "</table>"
+
+    # Nodes Section
+    @html_report_file.puts "<h2>Nodes In Cluster</h2>"
+    @html_report_file.puts "<table><thead><tr><th>Node Name</th></tr></thead>"
+    @html_report_file.puts "<tr><td>#{@cluster_info['nodes'].join('<br>')}</td></tr>"
     @html_report_file.puts "</table>"
     
-    # Container Image Section
+    # Object Info Section
+    @html_report_file.puts "<h2>Standard Kubernetes Objects In use</h2>"
+    @html_report_file.puts "<table><thead><tr><th>Object</th></tr></thead>"
+    @html_report_file.puts "<tr><td>#{@cluster_info['objects'].join('<br>')}</td></tr>"
+    @html_report_file.puts "</table>"
+
+    # CRD Section
     @html_report_file.puts "<h2>CRDs In Cluster</h2>"
     @html_report_file.puts "<table><thead><tr><th>CRD Name</th></tr></thead>"
     @html_report_file.puts "<tr><td>#{@cluster_info['crds'].join('<br>')}</td></tr>"
     @html_report_file.puts "</table>"
 
-    # Object Info Section
-    @html_report_file.puts "<h2>Kinds of Kubernetes Objects In use</h2>"
-    @html_report_file.puts "<table><thead><tr><th>Object</th></tr></thead>"
-    @html_report_file.puts "<tr><td>#{@cluster_info['objects'].join('<br>')}</td></tr>"
-    @html_report_file.puts "</table>"
-
     # Container Image Section
-    @html_report_file.puts "<h2>Docker Images Used In Cluster</h2>"
+    @html_report_file.puts "<h2>Unique Docker Images Used In Cluster</h2>"
     @html_report_file.puts "<table><thead><tr><th>Image Name</th></tr></thead>"
-    @html_report_file.puts "<tr><td>#{@cluster_info['container_images'].join('<br>')}</td></tr>"
+    @html_report_file.puts "<tr><td>#{@cluster_info['container_images'].sort.join('<br>')}</td></tr>"
     @html_report_file.puts "</table>"
 
 
@@ -258,6 +316,8 @@ if __FILE__ == $0
   analysis.object_info
   analysis.crd_info
   analysis.namespace_info
+  analysis.node_info
+  analysis.rbac_info
   analysis.report
 end
 
