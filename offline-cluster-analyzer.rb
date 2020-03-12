@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 # This script is designed to take the output of "kubectl get $(kubectl api-resources --verbs=list -o name | grep -v -e "secrets" -e "componentstatuses" -e "priorityclass" -e "events" | paste -sd, -) --ignore-not-found --all-namespaces -o json" 
+# If you don't fancy the nested command kubectl get po,svc,roles,rolebindings,clusterroles,clusterrolebindings,networkpolicies,psp,no,ns,pv,pvc,rc,crds,ds,deploy,rs,sts,ing --all-namespaces -o json , will work.
 # and analyse it for various things that can be helpful in security reviews and review scoping
 
 class Offlinek8sAnalyzer
@@ -32,28 +33,33 @@ class Offlinek8sAnalyzer
     @data = JSON.parse(input)
   end
 
+  def pod_info
+    @log.debug("Starting Pod Info")
+    @cluster_info['pods'] = Array.new
+    @data['items'].each do |item|
+      if item['kind'] == "Pod"
+        @cluster_info['pods'] << item
+      end
+    end
+  end
+
   def container_image_info
     @log.debug("Starting Image Info")
-    pods = Array.new
 
     images = Array.new
 
-    @data['items'].each do |item|
-      if item['kind'] == "Pod"
-        pods << item
-      end
-    end
+    @cluster_info['container_images'] = Array.new
 
-    pods.each do |pod|
+    @cluster_info['pods'].each do |pod|
         pod['spec']['containers'].each do |container|
-            images << container['image']
+            @cluster_info['container_images'] << container['image']
         end
     end
 
-    images.uniq!
+    @cluster_info['container_images'].uniq!
     
-    @cluster_info['container_images'] = Array.new
-    images.each {|image| @cluster_info['container_images'] << image }
+    
+    
   end
 
   def object_info
@@ -66,8 +72,28 @@ class Offlinek8sAnalyzer
     objects.uniq!
     @cluster_info['objects'] = Array.new
     objects.each {|object| @cluster_info['objects'] << object}
-    
+  end
 
+  def crd_info
+    @log.debug("Starting CRD Info")
+    @cluster_info['crds'] = Array.new
+    @data['items'].each do |item|
+      if item['kind'] == "CustomResourceDefinition"
+        @cluster_info['crds'] << item['metadata']['name']
+      end
+    end
+    @log.debug("Found #{@cluster_info['crds'].length.to_s} CRDs")
+  end
+
+  def namespace_info
+    @log.debug("Starting Namespace Info")
+    @cluster_info['namespaces'] = Array.new
+    @data['items'].each do |item|
+      if item['kind'] == "Namespace"
+        @cluster_info['namespaces'] << item['metadata']['name']
+      end
+    end
+    @log.debug("Found #{@cluster_info['namespaces'].length.to_s } namespaces")
   end
 
   def report
@@ -141,7 +167,22 @@ class Offlinek8sAnalyzer
     @html_report_file.puts "<table><thead><tr><th>Check</th><th>Number</th></tr></thead>"
     @log.debug("Number of container images should be " + @cluster_info['container_images'].length.to_s)
     @html_report_file.puts "<tr><td>Unique Docker Images</td><td>#{@cluster_info['container_images'].length.to_s}</td></tr>"
+    @html_report_file.puts "<tr><td>Pods running in cluster</td><td>#{@cluster_info['pods'].length.to_s}</td></tr>"
     @html_report_file.puts "<tr><td>Object Types In use</td><td>#{@cluster_info['objects'].length.to_s}</td></tr>"
+    @html_report_file.puts "<tr><td>CRDs In use</td><td>#{@cluster_info['crds'].length.to_s}</td></tr>"
+    @html_report_file.puts "<tr><td>namespaces</td><td>#{@cluster_info['namespaces'].length.to_s}</td></tr>"
+    @html_report_file.puts "</table>"
+
+    # Namespace Info Section
+    @html_report_file.puts "<h2>Namespaces in cluster</h2>"
+    @html_report_file.puts "<table><thead><tr><th>namespace name</th></tr></thead>"
+    @html_report_file.puts "<tr><td>#{@cluster_info['namespaces'].join('<br>')}</td></tr>"
+    @html_report_file.puts "</table>"
+    
+    # Container Image Section
+    @html_report_file.puts "<h2>CRDs In Cluster</h2>"
+    @html_report_file.puts "<table><thead><tr><th>CRD Name</th></tr></thead>"
+    @html_report_file.puts "<tr><td>#{@cluster_info['crds'].join('<br>')}</td></tr>"
     @html_report_file.puts "</table>"
 
     # Object Info Section
@@ -155,6 +196,7 @@ class Offlinek8sAnalyzer
     @html_report_file.puts "<table><thead><tr><th>Image Name</th></tr></thead>"
     @html_report_file.puts "<tr><td>#{@cluster_info['container_images'].join('<br>')}</td></tr>"
     @html_report_file.puts "</table>"
+
 
 
 
@@ -174,11 +216,15 @@ if __FILE__ == $0
   
   opts = OptionParser.new do |opts|
     opts.banner = "Kubernetes Offline Analyzer #{Offlinek8sAnalyzer::VERSION}"
-    opts.on("--inputfile [INPUTFILE]", "Cluster Role File to review") do |inputfile|
+    opts.on("-i", "--inputfile [INPUTFILE]", "Cluster Role File to review") do |inputfile|
       options.input_file = inputfile
     end
 
-    opts.on("--reportDirectory [REPORTDIRECTORY", "Directory for the report") do |repdir|
+    opts.on("-f", "--reportFile [REPORTFILE]", "Report File Name") do |reportfile|
+      options.report_file = reportfile
+    end
+
+    opts.on("--reportDirectory [REPORTDIRECTORY]", "Directory for the report") do |repdir|
       options.report_directory = repdir
     end
 
@@ -207,8 +253,11 @@ if __FILE__ == $0
 
   analysis = Offlinek8sAnalyzer.new(options)
   analysis.run
+  analysis.pod_info
   analysis.container_image_info
   analysis.object_info
+  analysis.crd_info
+  analysis.namespace_info
   analysis.report
 end
 
