@@ -136,6 +136,16 @@ class Offlinek8sAnalyzer
 
   end
 
+  def service_info
+    @log.debug("Starting Service Info")
+    @cluster_info['services'] = Array.new
+    @data['items'].each do |item|
+      if item['kind'] == "Service"
+        @cluster_info['services'] << item['metadata']['name']
+      end
+    end
+  end
+
   def report
     @log.debug("Starting Report")
     @html_report_file = File.new(@options.report_file + '.html','w+')
@@ -208,6 +218,7 @@ class Offlinek8sAnalyzer
     @html_report_file.puts "<tr><td>Namespaces</td><td>#{@cluster_info['namespaces'].length.to_s}</td></tr>"
     @html_report_file.puts "<tr><td>Nodes</td><td>#{@cluster_info['nodes'].length.to_s}</td></tr>"
     @html_report_file.puts "<tr><td>Pods running in cluster</td><td>#{@cluster_info['pods'].length.to_s}</td></tr>"
+    @html_report_file.puts "<tr><td>Services in cluster</td><td>#{@cluster_info['services'].length.to_s}</td></tr>"
     @html_report_file.puts "<tr><td>Cluster Roles in cluster</td><td>#{@cluster_info['clusterroles'].length.to_s}</td></tr>"
     @html_report_file.puts "<tr><td>Cluster Role Bindings in cluster</td><td>#{@cluster_info['clusterrolebindings'].length.to_s}</td></tr>"
     @html_report_file.puts "<tr><td>Roles in cluster</td><td>#{@cluster_info['roles'].length.to_s}</td></tr>"
@@ -237,6 +248,12 @@ class Offlinek8sAnalyzer
     @html_report_file.puts "<tr><td>#{@cluster_info['nodes'].join('<br>')}</td></tr>"
     @html_report_file.puts "</table>"
     
+    # Services Section
+    @html_report_file.puts "<h2>Services In Cluster</h2>"
+    @html_report_file.puts "<table><thead><tr><th>Service Name</th></tr></thead>"
+    @html_report_file.puts "<tr><td>#{@cluster_info['services'].join('<br>')}</td></tr>"
+    @html_report_file.puts "</table>"
+
     # Object Info Section
     @html_report_file.puts "<h2>Standard Kubernetes Objects In use</h2>"
     @html_report_file.puts "<table><thead><tr><th>Object</th></tr></thead>"
@@ -317,6 +334,7 @@ if __FILE__ == $0
   analysis.crd_info
   analysis.namespace_info
   analysis.node_info
+  analysis.service_info
   analysis.rbac_info
   analysis.report
 end
