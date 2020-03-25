@@ -98,7 +98,13 @@ class Offlinek8sAnalyzer
     @cluster_info['nodes'] = Array.new
     @data['items'].each do |item|
       if item['kind'] == "Node"
-        @cluster_info['nodes'] << item['metadata']['name']
+        ip_addresses = Array.new
+        item['status']['addresses'].each do |add|
+          if add["type"] == "InternalIP"
+            ip_addresses << add["address"]
+          end
+        end
+        @cluster_info['nodes'] << item['metadata']['name'] + ',' + ip_addresses.join(' ')
       end
     end
   end
@@ -244,8 +250,13 @@ class Offlinek8sAnalyzer
 
     # Nodes Section
     @html_report_file.puts "<h2>Nodes In Cluster</h2>"
-    @html_report_file.puts "<table><thead><tr><th>Node Name</th></tr></thead>"
-    @html_report_file.puts "<tr><td>#{@cluster_info['nodes'].join('<br>')}</td></tr>"
+    @html_report_file.puts "<table><thead><tr><th>Node Name</th><th>IP Address(es)</th></tr></thead>"
+    @cluster_info['nodes'].each do |node|
+      name = node.split(',')[0]
+      ip_addresses = node.split(',')[1]
+      @html_report_file.puts "<tr><td>#{name}</td><td>#{ip_addresses}</tr>"  
+    end
+    
     @html_report_file.puts "</table>"
     
     # Services Section
@@ -295,7 +306,7 @@ if __FILE__ == $0
       options.input_file = inputfile
     end
 
-    opts.on("-f", "--reportFile [REPORTFILE]", "Report File Name") do |reportfile|
+    opts.on("-r", "--reportFile [REPORTFILE]", "Report File Name") do |reportfile|
       options.report_file = reportfile
     end
 
