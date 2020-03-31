@@ -492,7 +492,7 @@ class Offlinek8sAnalyzer
 
 
     @rbac_results.each do |name, info|
-      next if name == 'cluster_roles'
+      next if name == 'clusterroles'
       @log.debug "printing results for namespace : #{name}"
       @html_report_file.puts "<br><h2>Information for Namespace #{name}</h2> "
       @html_report_file.puts "<table><thead><tr><th>Name</th><th>Default?</th><th>Subjects</th><th>Rules</th></tr></thead>"
