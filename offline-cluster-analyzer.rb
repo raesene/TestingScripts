@@ -111,30 +111,49 @@ class Offlinek8sAnalyzer
 
   def rbac_info
     @log.debug("Starting RBAC Info")
+    @roles = Array.new
+    @rolebindings = Array.new
+    @clusterroles = Array.new
+    @clusterrolebindings = Array.new
+
+    @data['items'].each do |item|
+      case item['kind']
+      when "ClusterRole"
+        @clusterroles << item
+      when "ClusterRoleBinding"
+        @clusterrolebindings << item
+      when "Role"
+        @roles << item
+      when "RoleBinding"
+        @rolebindings << item
+      end
+    end
+
+
+    
     @cluster_info['clusterroles'] = Array.new
     @cluster_info['clusterrolebindings'] = Array.new
     @cluster_info['roles'] = Array.new
     @cluster_info['rolebindings'] = Array.new
-
-    @data['items'].each do |item|
+    @clusterroles.each do |item|
       if item['kind'] == "ClusterRole"
         @cluster_info['clusterroles'] << item['metadata']['name']
       end
     end
 
-    @data['items'].each do |item|
+    @clusterrolebindings.each do |item|
       if item['kind'] == "ClusterRoleBinding"
         @cluster_info['clusterrolebindings'] << item['metadata']['name']
       end
     end
 
-    @data['items'].each do |item|
+    @roles.each do |item|
       if item['kind'] == "Role"
         @cluster_info['roles'] << item['metadata']['name']
       end
     end
 
-    @data['items'].each do |item|
+    @rolebindings.each do |item|
       if item['kind'] == "RoleBinding"
         @cluster_info['rolebindings'] << item['metadata']['name']
       end
