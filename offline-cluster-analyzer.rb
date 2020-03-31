@@ -27,6 +27,8 @@ class Offlinek8sAnalyzer
     @log.debug ("Starting Run")
     require 'json'
     @cluster_info = Hash.new
+    @rbac_results = Hash.new
+    @rbac_subject_results = Hash.new
 
     input = File.open(@input_file,'r').read
 
@@ -128,9 +130,7 @@ class Offlinek8sAnalyzer
         @rolebindings << item
       end
     end
-
-
-    
+  
     @cluster_info['clusterroles'] = Array.new
     @cluster_info['clusterrolebindings'] = Array.new
     @cluster_info['roles'] = Array.new
@@ -158,8 +158,125 @@ class Offlinek8sAnalyzer
         @cluster_info['rolebindings'] << item['metadata']['name']
       end
     end
-
   end
+
+  def parseclusterroles
+    @rbac_results['clusterroles'] = Hash.new
+    @clusterroles.each do |role|
+      role_name = role['metadata']['name']
+      role_output = Hash.new
+      role_output[:rules] = role['rules']
+      #Add a flag so we know if this is one of k8s default roles
+      #This is brittle but ok for now.
+      begin
+        if role['metadata']['labels']['kubernetes.io/bootstrapping'] == "rbac-defaults"
+          role_output[:default] = true
+        else
+          role_output[:default] = false
+        end
+      rescue NoMethodError
+        role_output[:default] = false
+      end
+
+      role_output[:cluster_subjects] = Array.new
+      @clusterrolebindings.each do |binding|
+        if binding['roleRef']['kind'] == "ClusterRole"
+          if binding['roleRef']['name'] == role_name
+            if binding['subjects']
+              binding['subjects'].each do |subject|
+                role_output[:cluster_subjects] << subject
+                unless @rbac_subject_results[subject]
+                  @rbac_subject_results[subject] = Array.new
+                end
+                @rbac_subject_results[subject] << role_name
+              end
+            end
+          end
+        end
+      end
+      role_output[:subjects] = Array.new
+      @rolebindings.each do |binding|
+        if binding['roleRef']['kind'] == "ClusterRole"
+          if binding['roleRef']['name'] == role_name
+            if binding['subjects']
+              binding['subjects'].each do |subject|
+                #Not 100% that this logic holds
+                subject['namespace'] = binding['metadata']['namespace']
+                role_output[:subjects] << subject
+                @log.debug("Namespace for subject is #{subject['namespace']}")
+              end
+            end
+          end
+        end
+      end
+      @rbac_results['clusterroles'][role_name] = role_output
+    end
+  end
+
+  def parseroles
+    @roles.each do |role|
+      role_namespace = role['metadata']['namespace']
+      role_name = role['metadata']['name']
+      role_output = Hash.new
+      role_output[:rules] = role['rules']
+      #Add a flag so we know if this is one of k8s default roles
+      #This is brittle but ok for now.
+      begin
+        if role['metadata']['labels']['kubernetes.io/bootstrapping'] == "rbac-defaults"
+          role_output[:default] = true
+        else
+          role_output[:default] = false
+        end
+      rescue NoMethodError
+        role_output[:default] = false
+      end
+      
+      #Here we Don't need to check for cluster roles as you can't (AFAIK) do a clusterrolebinding to a role
+      role_output[:subjects] = Array.new
+      @rolebindings.each do |binding|
+        if binding['roleRef']['kind'] == "ClusterRole"
+          if binding['roleRef']['name'] == role_name
+            if binding['subjects']
+              binding['subjects'].each do |subject|
+                #Not 100% that this logic holds
+                subject['namespace'] = binding['metadata']['namespace']
+                role_output[:subjects] << subject
+              end
+            end
+          end
+        end
+      end
+      unless @rbac_results[role_namespace]
+        @rbac_results[role_namespace] = Hash.new
+      end
+      @log.debug("Analysed a role in #{role_namespace} called #{role_name}")
+      @rbac_results[role_namespace][role_name] = role_output
+    end
+  end
+
+  def rbac_security_checks
+    @rbac_security_check_results = Hash.new
+    @rbac_security_check_results[:get_secrets] = Hash.new
+    @rbac_results.each do |namespace, results|
+      @rbac_security_check_results[:get_secrets][namespace] = Hash.new
+      results.each do |role_name, info|
+        info[:rules].each do |rule|
+          @log.debug("About to check #{role_name} for secrets")
+          next unless rule['resources'] && rule['verbs']
+          if rule['resources'].include?('secrets') && rule['verbs'].include?('get')
+            @rbac_security_check_results[:get_secrets][namespace][role_name] = info
+            @log.debug("Added a role called #{role_name}")
+          end
+          if rule['resources'].include?('*') && rule['verbs'].include?('*')
+            @rbac_security_check_results[:get_secrets][namespace][role_name] = info
+            @log.debug("Added a wildcard role called #{role_name} from namespace #{namespace}")
+          end
+        end
+      end
+    end
+  end
+
+
 
   def service_info
     @log.debug("Starting Service Info")
@@ -302,8 +419,116 @@ class Offlinek8sAnalyzer
     @html_report_file.puts "<tr><td>#{@cluster_info['container_images'].sort.join('<br>')}</td></tr>"
     @html_report_file.puts "</table>"
 
+    @html_report_file.puts "<br><br>"
+    @html_report_file.puts "<h2>Privileged Roles</h2>"
+    @rbac_security_check_results[:get_secrets].each do |namespace, roles|
+      if namespace == 'clusterroles'
+        @html_report_file.puts "<h2>Cluster Roles with Get Secrets</h2>"
+        @html_report_file.puts "<table><thead><tr><th>Role Name</th><th>Default?</th><th>Cluster Subjects</th><th>Subjects</th></thead>"  
+        roles.each do |role|
+          subjects = ''
+          cluster_subjects = ''
+          role[1][:subjects].each do |subject|
+            subjects << "#{subject['kind']}:#{subject['namespace']}:#{subject['name']}<br>"
+          end
+          if role[1][:cluster_subjects]
+            role[1][:cluster_subjects].each do |subject|
+              cluster_subjects << "#{subject['kind']}:#{subject['namespace']}:#{subject['name']}<br>"
+            end
+          end
+          @html_report_file.puts "<tr><td>#{role[0]}</td><td>#{role[1][:default]}</td><td>#{cluster_subjects}</td><td>#{subjects}</tr>"
+        end
+        @html_report_file.puts "</table><br><br>"
+      else
+        @html_report_file.puts "<h2>Roles for the #{namespace} namespace with Get Secrets</h2>"
+        @html_report_file.puts "<table><thead><tr><th>Role Name</th><th>Default?</th><th>Subjects</th></thead>"
+        roles.each do |role|
+          subjects = ''
+          role[1][:subjects].each do |subject|
+            subjects << "#{subject['kind']}:#{subject['namespace']}:#{subject['name']}<br>"
+          end
+          @html_report_file.puts "<tr><td>#{role[0]}</td><td>#{role[1][:default]}</td><td>#{subjects}</td></tr>"
+        end
+        @html_report_file.puts "</table><br><br>"
+      end
+      
+    end
 
 
+    @html_report_file.puts "<br><br>"
+    @html_report_file.puts "<br><br><h2>Cluster Role Information</h2>"
+    @html_report_file.puts "<table><thead><tr><th>Name</th><th>Default?</th><th>Cluster Subjects</th><th>Subjects</th><th>Rules</th></tr></thead>"
+    @rbac_results['clusterroles'].each do |name, info|
+      cluster_subjects = ''
+      info[:cluster_subjects].each do |subject|
+        cluster_subjects << "#{subject['kind']}:#{subject['namespace']}:#{subject['name']}<br>"
+      end
+      subjects = ''
+      info[:subjects].each do |sus|
+        @log.debug "Namespace for subject is #{sus['namespace']}"
+        subjects << "#{sus['kind']}:#{sus['namespace']}:#{sus['name']}<br>"
+      end
+
+      rules = ''
+      info[:rules].each do |rule|
+        unless rule['verbs']
+          rule['verbs'] = Array.new
+        end
+        unless rule['apiGroups']
+          rule['apiGroups'] = Array.new
+        end
+        unless rule['resources']
+          rule['resources'] = Array.new
+        end
+        unless rule['nonResourceURLs']
+          rule['nonResourceURLs'] = Array.new
+        end
+        rules << "Verbs : #{rule['verbs'].join(', ')}<br>API Groups : #{rule['apiGroups'].join(', ')}<br>Resources : #{rule['resources'].join(', ')}<br>Non Resource URLs: #{rule['nonResourceURLs'].join(', ')}<hr>"
+      end
+      @html_report_file.puts "<tr><td>#{name}</td><td>#{info[:default]}</td><td>#{cluster_subjects}</td><td>#{subjects}</td><td>#{rules}</td></tr>"
+    end
+    @html_report_file.puts "</table>"
+    @html_report_file.puts "<br><br>"
+
+
+    @rbac_results.each do |name, info|
+      next if name == 'cluster_roles'
+      @log.debug "printing results for namespace : #{name}"
+      @html_report_file.puts "<br><h2>Information for Namespace #{name}</h2> "
+      @html_report_file.puts "<table><thead><tr><th>Name</th><th>Default?</th><th>Subjects</th><th>Rules</th></tr></thead>"
+      info.each do |role, output|
+        subjects = ''
+        output[:subjects].each do |sus|
+          subjects << "#{sus['kind']}:#{sus['namespace']}:#{sus['name']}<br>"
+        end
+        rules = ''
+        output[:rules].each do |rule|
+          unless rule['verbs']
+            rule['verbs'] = Array.new
+          end
+          unless rule['apiGroups']
+            rule['apiGroups'] = Array.new
+          end
+          unless rule['resources']
+            rule['resources'] = Array.new
+          end
+          unless rule['nonResourceURLs']
+            rule['nonResourceURLs'] = Array.new
+          end
+          rules << "Verbs : #{rule['verbs'].join(', ')}<br>API Groups : #{rule['apiGroups'].join(', ')}<br>Resources : #{rule['resources'].join(', ')}<br>Non Resource URLs: #{rule['nonResourceURLs'].join(', ')}<hr>"
+        end
+        @html_report_file.puts "<tr><td>#{role}</td><td>#{output[:default]}</td><td>#{subjects}</td><td>#{rules}</td></tr>"
+      end
+      @html_report_file.puts "</table>"
+      @html_report_file.puts "<br><br>"
+    end
+    @html_report_file.puts "<br><br><h2>Cluster Role Subject Information</h2>"
+    @html_report_file.puts "<table><thead><tr><th>Subject</th><th>Roles</th></tr></thead>"
+    @rbac_subject_results.each do |subject, roles|
+      @html_report_file.puts "<tr><td>#{subject}</td><td>#{roles.join('<br>')}</td></tr>"
+    end
+    @html_report_file.puts "</table>"
+    @html_report_file.puts "<br><br>"
 
     @html_report_file.puts "</body></html>"
   end
@@ -366,6 +591,9 @@ if __FILE__ == $0
   analysis.node_info
   analysis.service_info
   analysis.rbac_info
+  analysis.parseclusterroles
+  analysis.parseroles
+  analysis.rbac_security_checks
   analysis.report
 end
 
