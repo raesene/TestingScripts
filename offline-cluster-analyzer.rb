@@ -165,6 +165,10 @@ class Offlinek8sAnalyzer
     @clusterroles.each do |role|
       role_name = role['metadata']['name']
       role_output = Hash.new
+      # Handle the case with a role with no rules in it
+      unless role['rules']
+        role['rules'] = [" "]
+      end
       role_output[:rules] = role['rules']
       #Add a flag so we know if this is one of k8s default roles
       #This is brittle but ok for now.
@@ -218,6 +222,10 @@ class Offlinek8sAnalyzer
       role_namespace = role['metadata']['namespace']
       role_name = role['metadata']['name']
       role_output = Hash.new
+      # Handle the case with a role with no rules in it
+      unless role['rules']
+        role['rules'] = [" "]
+      end
       role_output[:rules] = role['rules']
       #Add a flag so we know if this is one of k8s default roles
       #This is brittle but ok for now.
