@@ -45,6 +45,25 @@ class Offlinek8sAnalyzer
     end
   end
 
+  def security_context_info
+    #OK this is a dirty hack, needs cleaned up later.  security context can be at a pod or container level, but we'll check container level for now
+    @cluster_info['security_contexts'] = Hash.new
+    @data['items'].each do |item|
+      @log.debug("about to do a pod in security context")
+      if item['kind'] == "Pod"
+        podname = item['metadata']['name']
+        namespace = item['metadata']['namespace']
+        #Lets get some security context info out of the containers
+        item['spec']['containers'].each do |container|
+          containername = container['name']
+          if container['securityContext']
+            @cluster_info['security_contexts'][namespace + '|' + podname + '|' + containername] = container['securityContext']
+          end
+        end
+      end
+    end
+  end
+
   def container_image_info
     @log.debug("Starting Image Info")
 
@@ -167,7 +186,7 @@ class Offlinek8sAnalyzer
       role_output = Hash.new
       # Handle the case with a role with no rules in it
       unless role['rules']
-        role['rules'] = [" "]
+        role['rules'] = Hash.new
       end
       role_output[:rules] = role['rules']
       #Add a flag so we know if this is one of k8s default roles
@@ -224,7 +243,7 @@ class Offlinek8sAnalyzer
       role_output = Hash.new
       # Handle the case with a role with no rules in it
       unless role['rules']
-        role['rules'] = [" "]
+        role['rules'] = Hash.new
       end
       role_output[:rules] = role['rules']
       #Add a flag so we know if this is one of k8s default roles
@@ -538,6 +557,15 @@ class Offlinek8sAnalyzer
     @html_report_file.puts "</table>"
     @html_report_file.puts "<br><br>"
 
+    @html_report_file.puts "<br><br><h2>Security Context Information</h2>"
+    @html_report_file.puts "<table><thead><tr><th>Namespace</th><th>Pod Name</th><th>Container Name</th><th>Security context</th></tr></thead>"
+    @cluster_info['security_contexts'].each do |name, seccon|
+      namespace, pod, container = name.split('|')
+      @html_report_file.puts "<tr><td>#{namespace}</td><td>#{pod}</td><td>#{container}</td><td>#{seccon.to_s}</td></tr>"
+    end
+
+
+
     @html_report_file.puts "</body></html>"
   end
 end
@@ -592,6 +620,7 @@ if __FILE__ == $0
   analysis = Offlinek8sAnalyzer.new(options)
   analysis.run
   analysis.pod_info
+  analysis.security_context_info
   analysis.container_image_info
   analysis.object_info
   analysis.crd_info
