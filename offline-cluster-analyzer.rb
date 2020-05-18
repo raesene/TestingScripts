@@ -163,6 +163,7 @@ class Offlinek8sAnalyzer
     @clusterrolebindings.each do |item|
       if item['kind'] == "ClusterRoleBinding"
         @cluster_info['clusterrolebindings'] << item['metadata']['name']
+        @log.debug("added a clusterrolebinding")
       end
     end
 
@@ -203,16 +204,14 @@ class Offlinek8sAnalyzer
 
       role_output[:cluster_subjects] = Array.new
       @clusterrolebindings.each do |binding|
-        if binding['roleRef']['kind'] == "ClusterRole"
-          if binding['roleRef']['name'] == role_name
-            if binding['subjects']
-              binding['subjects'].each do |subject|
-                role_output[:cluster_subjects] << subject
-                unless @rbac_subject_results[subject]
-                  @rbac_subject_results[subject] = Array.new
-                end
-                @rbac_subject_results[subject] << role_name
+        if binding['roleRef']['name'] == role_name
+          if binding['subjects']
+            binding['subjects'].each do |subject|
+              role_output[:cluster_subjects] << subject
+              unless @rbac_subject_results[subject]
+                @rbac_subject_results[subject] = Array.new
               end
+              @rbac_subject_results[subject] << role_name
             end
           end
         end
