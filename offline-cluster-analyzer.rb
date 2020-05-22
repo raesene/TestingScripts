@@ -428,8 +428,10 @@ class Offlinek8sAnalyzer
     
     # Services Section
     @html_report_file.puts "<h2>Services In Cluster</h2>"
-    @html_report_file.puts "<table><thead><tr><th>Service Name</th></tr></thead>"
-    @html_report_file.puts "<tr><td>#{@cluster_info['services'].join('<br>')}</td></tr>"
+    @html_report_file.puts "<table><thead><tr><th>Namespace Name - Service Name</th></tr></thead>"
+    @cluster_info['services'].each do |name, value|
+      @html_report_file.puts "<tr><td>#{name}</td></tr>"
+    end
     @html_report_file.puts "</table>"
 
     # Object Info Section
