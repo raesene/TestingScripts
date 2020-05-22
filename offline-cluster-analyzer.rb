@@ -583,9 +583,9 @@ class Offlinek8sAnalyzer
     ports = Array.new
     ips = Array.new
     @cluster_info['services'].each do |name, value|
-      @log.debug("ip is #{value[0]}")
-      ips << value[0]
-      @log.debug("ports are #{value[1]}")
+      if value[0] != "None"
+        ips << value[0]
+      end
       value[1].split(',').each do |val|
         ports << val
       end
