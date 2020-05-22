@@ -306,12 +306,22 @@ class Offlinek8sAnalyzer
 
   def service_info
     @log.debug("Starting Service Info")
-    @cluster_info['services'] = Array.new
+    @cluster_info['services'] = Hash.new
     @data['items'].each do |item|
       if item['kind'] == "Service"
-        @cluster_info['services'] << item['metadata']['name']
+        ports = Array.new
+        item['spec']['ports'].each do |p|
+          ports << p['port']
+          @log.debug("added #{p['port']}")
+        end
+        service_data = Array.new
+        service_data << item['spec']['clusterIP']
+        service_data << ports.join(',')
+        @log.debug("ip address is #{service_data[0]}")
+        @cluster_info['services'][item['metadata']['namespace'] + ':' + item['metadata']['name']] = service_data
       end
     end
+
   end
 
   def report
@@ -423,8 +433,10 @@ class Offlinek8sAnalyzer
     
     # Services Section
     @html_report_file.puts "<h2>Services In Cluster</h2>"
-    @html_report_file.puts "<table><thead><tr><th>Service Name</th></tr></thead>"
-    @html_report_file.puts "<tr><td>#{@cluster_info['services'].join('<br>')}</td></tr>"
+    @html_report_file.puts "<table><thead><tr><th>Namespace Name</th><th>Service Name</th></tr></thead>"
+    @cluster_info['services'].each do |name, value|
+      @html_report_file.puts "<tr><td>#{name.split(':')[0]}</td><td>#{name.split(':')[1]}</td></tr>"
+    end
     @html_report_file.puts "</table>"
 
     # Object Info Section
@@ -562,8 +574,25 @@ class Offlinek8sAnalyzer
       namespace, pod, container = name.split('|')
       @html_report_file.puts "<tr><td>#{namespace}</td><td>#{pod}</td><td>#{container}</td><td>#{seccon.to_s}</td></tr>"
     end
+    @html_report_file.puts "</table>"
 
-
+    # Service scanning Section
+    @html_report_file.puts "<br><br>"
+    @html_report_file.puts "<h2>NMap command for scanning services</h2>"
+    @html_report_file.puts "<table><thead><tr><th>Command</th></tr></thead>"
+    ports = Array.new
+    ips = Array.new
+    @cluster_info['services'].each do |name, value|
+      if value[0] != "None"
+        ips << value[0]
+      end
+      value[1].split(',').each do |val|
+        ports << val
+      end
+    end
+    ports.uniq!
+    @html_report_file.puts "<tr><td>nmap -sT -Pn -p #{ports.join(',')} #{ips.join(' ')} </td></tr>"
+    @html_report_file.puts "</table>"
 
     @html_report_file.puts "</body></html>"
   end
