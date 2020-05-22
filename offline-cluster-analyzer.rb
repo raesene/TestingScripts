@@ -306,12 +306,17 @@ class Offlinek8sAnalyzer
 
   def service_info
     @log.debug("Starting Service Info")
-    @cluster_info['services'] = Array.new
+    @cluster_info['services'] = Hash.new
     @data['items'].each do |item|
       if item['kind'] == "Service"
-        @cluster_info['services'] << item['metadata']['name']
+        ports = ''
+        item['spec']['ports'].each do |port|
+          ports << port['port']
+        end
+        @cluster_info['services'][item['metadata']['namespace'] + '-' + item['metadata']['name']] = [item['spec']['clusterIP'], ports]
       end
     end
+
   end
 
   def report
