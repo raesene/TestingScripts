@@ -313,7 +313,7 @@ class Offlinek8sAnalyzer
         item['spec']['ports'].each do |port|
           ports << port['port']
         end
-        @cluster_info['services'][item['metadata']['namespace'] + '-' + item['metadata']['name']] = [item['spec']['clusterIP'], ports]
+        @cluster_info['services'][item['metadata']['namespace'] + ' : ' + item['metadata']['name']] = [item['spec']['clusterIP'], ports]
       end
     end
 
@@ -428,7 +428,7 @@ class Offlinek8sAnalyzer
     
     # Services Section
     @html_report_file.puts "<h2>Services In Cluster</h2>"
-    @html_report_file.puts "<table><thead><tr><th>Namespace Name - Service Name</th></tr></thead>"
+    @html_report_file.puts "<table><thead><tr><th>Namespace Name : Service Name</th></tr></thead>"
     @cluster_info['services'].each do |name, value|
       @html_report_file.puts "<tr><td>#{name}</td></tr>"
     end
@@ -570,7 +570,20 @@ class Offlinek8sAnalyzer
       @html_report_file.puts "<tr><td>#{namespace}</td><td>#{pod}</td><td>#{container}</td><td>#{seccon.to_s}</td></tr>"
     end
 
-
+    # Service scanning Section
+    @html_report_file.puts "<h2>NMap command for scanning services</h2>"
+    @html_report_file.puts "<table><thead><tr><th>Command</th></tr></thead>"
+    ports = Array.new
+    ips = Array.new
+    @cluster_info['services'].each do |name, value|
+      ips << value[0]
+      value[1].split(',').each do |val|
+        ports << val
+      end
+    end
+    ports.uniq!
+    @html_report_file.puts "<tr><td>nmap -sT -v -n -Pn -p #{ports.join(',')} #{ips.join(',')} </td></tr>"
+    @html_report_file.puts "</table>"
 
     @html_report_file.puts "</body></html>"
   end
