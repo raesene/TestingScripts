@@ -310,9 +310,13 @@ class Offlinek8sAnalyzer
     @data['items'].each do |item|
       if item['kind'] == "Service"
         ports = Array.new
-        item['spec']['ports'].each do |p|
-          ports << p['port']
-          @log.debug("added #{p['port']}")
+        begin
+          item['spec']['ports'].each do |p|
+            ports << p['port']
+            @log.debug("added #{p['port']}")
+          end
+        rescue NoMethodError
+          @log.debug("there were no ports for service #{item['metadata']['name']}")
         end
         service_data = Array.new
         service_data << item['spec']['clusterIP']
