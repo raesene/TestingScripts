@@ -50,7 +50,7 @@ class Offlinek8sAnalyzer
     @cluster_info['security_contexts'] = Hash.new
     @data['items'].each do |item|
       @log.debug("about to do a pod in security context")
-      if item['kind'] == "Pod"
+      if item['kind'] == "Pod" && item['apiVersion'] == "v1"
         podname = item['metadata']['name']
         namespace = item['metadata']['namespace']
         #Lets get some security context info out of the containers
@@ -155,26 +155,26 @@ class Offlinek8sAnalyzer
     @cluster_info['roles'] = Array.new
     @cluster_info['rolebindings'] = Array.new
     @clusterroles.each do |item|
-      if item['kind'] == "ClusterRole"
+      if item['kind'] == "ClusterRole" && item['apiVersion'] == "rbac.authorization.k8s.io/v1"
         @cluster_info['clusterroles'] << item['metadata']['name']
       end
     end
 
     @clusterrolebindings.each do |item|
-      if item['kind'] == "ClusterRoleBinding"
+      if item['kind'] == "ClusterRoleBinding" && item['apiVersion'] == "rbac.authorization.k8s.io/v1"
         @cluster_info['clusterrolebindings'] << item['metadata']['name']
         @log.debug("added a clusterrolebinding")
       end
     end
 
     @roles.each do |item|
-      if item['kind'] == "Role"
+      if item['kind'] == "Role" && item['apiVersion'] == "rbac.authorization.k8s.io/v1"
         @cluster_info['roles'] << item['metadata']['name']
       end
     end
 
     @rolebindings.each do |item|
-      if item['kind'] == "RoleBinding"
+      if item['kind'] == "RoleBinding" && item['apiVersion'] == "rbac.authorization.k8s.io/v1"
         @cluster_info['rolebindings'] << item['metadata']['name']
       end
     end
@@ -308,7 +308,7 @@ class Offlinek8sAnalyzer
     @log.debug("Starting Service Info")
     @cluster_info['services'] = Hash.new
     @data['items'].each do |item|
-      if item['kind'] == "Service"
+      if item['kind'] == "Service" && item['apiVersion'] == "v1"
         ports = Array.new
         begin
           item['spec']['ports'].each do |p|
