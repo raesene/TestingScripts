@@ -39,7 +39,7 @@ class Offlinek8sAnalyzer
     @log.debug("Starting Pod Info")
     @cluster_info['pods'] = Array.new
     @data['items'].each do |item|
-      if item['kind'] == "Pod"
+      if item['kind'] == "Pod" && item['apiVersion'] == "v1"
         @cluster_info['pods'] << item
       end
     end
@@ -107,7 +107,7 @@ class Offlinek8sAnalyzer
     @log.debug("Starting Namespace Info")
     @cluster_info['namespaces'] = Array.new
     @data['items'].each do |item|
-      if item['kind'] == "Namespace"
+      if item['kind'] == "Namespace" && item['apiVersion'] == "v1"
         @cluster_info['namespaces'] << item['metadata']['name']
       end
     end
@@ -118,7 +118,7 @@ class Offlinek8sAnalyzer
     @log.debug("Starting node Info")
     @cluster_info['nodes'] = Array.new
     @data['items'].each do |item|
-      if item['kind'] == "Node"
+      if item['kind'] == "Node" && item['apiVersion'] == "v1"
         ip_addresses = Array.new
         item['status']['addresses'].each do |add|
           if add["type"] == "InternalIP"
