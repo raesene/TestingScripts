@@ -114,6 +114,26 @@ class Offlinek8sAnalyzer
     @log.debug("Found #{@cluster_info['namespaces'].length.to_s } namespaces")
   end
 
+  def object_counts
+    @log.debug("Starting Object Counts")
+    @cluster_info['object_counts'] = Hash.new
+    @data['items'].each do |item|
+      if item['metadata']['namespace']
+        namespace = item['metadata']['namespace']
+      else
+        namespace = 'cluster_wide'
+      end
+      unless @cluster_info['object_counts'][namespace]
+        @cluster_info['object_counts'][namespace] = Hash.new
+      end
+      object_type = item['apiVersion'] + '/' + item['kind']
+      unless @cluster_info['object_counts'][namespace][object_type]
+        @cluster_info['object_counts'][namespace][object_type] = 0
+      end
+      @cluster_info['object_counts'][namespace][object_type] = @cluster_info['object_counts'][namespace][object_type] + 1
+    end
+  end
+
   def node_info
     @log.debug("Starting node Info")
     @cluster_info['nodes'] = Array.new
@@ -326,6 +346,25 @@ class Offlinek8sAnalyzer
       end
     end
 
+  end
+
+  def netpol_info
+    @log.debug("Starting Network Policy Info")
+    @cluster_info['netpol'] = Hash.new
+    @data['items'].each do |item|
+      if item['kind'] == "NetworkPolicy" && item['apiVersion'] == "networking.k8s.io/v1"
+        direction = item['spec']['policyTypes']
+        namespace = item['metadata']['namespace']
+        @log.debug("Direction is #{direction} namespace is #{namespace}")
+        unless @cluster_info['netpol'][namespace]
+          @cluster_info['netpol'][namespace] = Hash.new
+        end
+        unless @cluster_info['netpol'][namespace][direction]
+          @cluster_info['netpol'][namespace][direction] = Array.new
+        end
+        @cluster_info['netpol'][namespace][direction] << item['spec']
+      end
+    end
   end
 
   def report
@@ -572,6 +611,21 @@ class Offlinek8sAnalyzer
     @html_report_file.puts "</table>"
     @html_report_file.puts "<br><br>"
 
+    @html_report_file.puts "<br><br><h2>Network Policy information</h2>"
+    if @cluster_info['netpol'].length == 0
+      @html_report_file.puts "No Network Policy Objects Found"
+    else
+      @cluster_info['netpol'].each do |namespace,dirs|
+        @html_report_file.puts "<br><br><h3>Network policies for #{namespace}</h3>"        
+        @html_report_file.puts "<table><thead><tr><th>Direction</th><th>Rule</th></tr></thead>"
+        @log.debug("dir is #{dirs.keys}")
+        dirs.each do |dir,pol|
+          @html_report_file.puts "<tr><td>#{dir}</td><td>#{pol.join('<br>')}</td></tr>"
+        end
+        @html_report_file.puts "</table>"
+      end
+    end
+
     @html_report_file.puts "<br><br><h2>Security Context Information</h2>"
     @html_report_file.puts "<table><thead><tr><th>Namespace</th><th>Pod Name</th><th>Container Name</th><th>Security context</th></tr></thead>"
     @cluster_info['security_contexts'].each do |name, seccon|
@@ -597,6 +651,20 @@ class Offlinek8sAnalyzer
     ports.uniq!
     @html_report_file.puts "<tr><td>nmap -sT -Pn -p #{ports.join(',')} #{ips.join(' ')} </td></tr>"
     @html_report_file.puts "</table>"
+
+    # Object Counts Section
+
+    @html_report_file.puts "<br><br>"
+    @html_report_file.puts "<h2>Cluster Object Counts</h2>"
+    @cluster_info['object_counts'].each do |namespace, objects|
+      @log.debug("Object count is is #{objects.length.to_s}")
+      @html_report_file.puts "<h3>#{namespace}</h3>"
+      @html_report_file.puts "<table><thead><tr><th>Object Type</th><th>Object Count</th></tr></thead>"
+      objects.each do |object, count|
+        @html_report_file.puts "<tr><td>#{object}</td><td>#{count}</td></tr>"
+      end
+      @html_report_file.puts "</table><br><br>"
+    end
 
     @html_report_file.puts "</body></html>"
   end
@@ -655,6 +723,7 @@ if __FILE__ == $0
   analysis.security_context_info
   analysis.container_image_info
   analysis.object_info
+  analysis.object_counts
   analysis.crd_info
   analysis.namespace_info
   analysis.node_info
@@ -663,6 +732,7 @@ if __FILE__ == $0
   analysis.parseclusterroles
   analysis.parseroles
   analysis.rbac_security_checks
+  analysis.netpol_info
   analysis.report
 end
 
