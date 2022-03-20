@@ -156,6 +156,9 @@ class Offlinek8sAnalyzer
     @rolebindings = Array.new
     @clusterroles = Array.new
     @clusterrolebindings = Array.new
+    @users = Array.new
+    @groups = Array.new
+    @service_accounts = Array.new
 
     @data['items'].each do |item|
       case item['kind']
