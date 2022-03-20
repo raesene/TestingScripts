@@ -536,6 +536,25 @@ class Offlinek8sAnalyzer
     @html_report_file.puts "<tr><td>#{@cluster_info['container_images'].sort.join('<br>')}</td></tr>"
     @html_report_file.puts "</table>"
 
+    # Service Account Section. Unique service accounts that have one or more RBAC rule defined
+    @html_report_file.puts "<h2>Unique Service Accounts Used In Cluster which have one or more RBAC rule</h2>"
+    @html_report_file.puts "<table><thead><tr><th>Service Account Name</th></tr></thead>"
+    @html_report_file.puts "<tr><td>#{@cluster_info['service_accounts'].uniq.sort.join('<br>')}</td></tr>"
+    @html_report_file.puts "</table>"
+
+    # User Section. Unique Users that have one or more RBAC rule defined
+    @html_report_file.puts "<h2>Unique User Accounts Used In Cluster which have one or more RBAC rule</h2>"
+    @html_report_file.puts "<table><thead><tr><th>User Name</th></tr></thead>"
+    @html_report_file.puts "<tr><td>#{@cluster_info['users'].uniq.sort.join('<br>')}</td></tr>"
+    @html_report_file.puts "</table>"
+
+    # Group Section. Unique Groups that have one or more RBAC rule defined
+    @html_report_file.puts "<h2>Unique Groups Used In Cluster which have one or more RBAC rule</h2>"
+    @html_report_file.puts "<table><thead><tr><th>Group Name</th></tr></thead>"
+    @html_report_file.puts "<tr><td>#{@cluster_info['groups'].uniq.sort.join('<br>')}</td></tr>"
+    @html_report_file.puts "</table>"
+
+
     @html_report_file.puts "<br><br>"
     @html_report_file.puts "<h2>Privileged Roles</h2>"
     @rbac_security_check_results[:get_secrets].each do |namespace, roles|
