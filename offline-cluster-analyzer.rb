@@ -156,9 +156,6 @@ class Offlinek8sAnalyzer
     @rolebindings = Array.new
     @clusterroles = Array.new
     @clusterrolebindings = Array.new
-    @users = Array.new
-    @groups = Array.new
-    @service_accounts = Array.new
 
     @data['items'].each do |item|
       case item['kind']
@@ -177,6 +174,10 @@ class Offlinek8sAnalyzer
     @cluster_info['clusterrolebindings'] = Array.new
     @cluster_info['roles'] = Array.new
     @cluster_info['rolebindings'] = Array.new
+    @cluster_info['users'] = Array.new
+    @cluster_info['groups'] = Array.new
+    @cluster_info['service_accounts'] = Array.new
+    
     @clusterroles.each do |item|
       if item['kind'] == "ClusterRole" && item['apiVersion'] == "rbac.authorization.k8s.io/v1"
         @cluster_info['clusterroles'] << item['metadata']['name']
