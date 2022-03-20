@@ -188,6 +188,20 @@ class Offlinek8sAnalyzer
       if item['kind'] == "ClusterRoleBinding" && item['apiVersion'] == "rbac.authorization.k8s.io/v1"
         @cluster_info['clusterrolebindings'] << item['metadata']['name']
         @log.debug("added a clusterrolebinding")
+
+        # Not all Cluster Role Bindings have subjects?
+        if item['subjects']
+          item['subjects'].each do |subject|
+            case subject['kind']
+            when "ServiceAccount"
+              @cluster_info['service_accounts'] << subject['name']
+            when "Group"
+              @cluster_info['groups'] << subject['name']
+           when "User"
+              @cluster_info['users'] << subject['name']
+            end
+          end
+        end
       end
     end
 
@@ -201,7 +215,25 @@ class Offlinek8sAnalyzer
       if item['kind'] == "RoleBinding" && item['apiVersion'] == "rbac.authorization.k8s.io/v1"
         @cluster_info['rolebindings'] << item['metadata']['name']
       end
+
+      if item['subjects']
+        item['subjects'].each do |subject|
+          case subject['kind']
+          when "ServiceAccount"
+            @cluster_info['service_accounts'] << subject['name']
+          when "Group"
+            @cluster_info['groups'] << subject['name']
+         when "User"
+            @cluster_info['users'] << subject['name']
+          end
+        end
+      end
     end
+
+    @log.debug("Got #{@cluster_info['service_accounts'].length.to_s} service accounts")
+    @log.debug("Got #{@cluster_info['users'].length.to_s} Users")
+    @log.debug("Got #{@cluster_info['groups'].length.to_s} Groups")
+
   end
 
   def parseclusterroles
